@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HireFlow AI</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script defer src="/static/app.js"></script>
+  </head>
+  <body>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-grid"></div>
+    <main class="shell">
+      <section id="authGate" class="auth-panel">
+        <div class="auth-copy">
+          <p class="eyebrow">Role based access</p>
+          <h1>HireFlow AI</h1>
+          <p class="lede">
+            Choose your access type to open the correct portal. Student login opens the student portal.
+            HR login opens the recruiter workspace.
+          </p>
+        </div>
+        <div class="auth-grid">
+          <button class="auth-card" data-role="student" type="button">
+            <span class="auth-card-kicker">Student login</span>
+            <strong>Open Student Portal</strong>
+            <p>Analyze resumes, improve applications, and generate interview prep.</p>
+          </button>
+          <button class="auth-card" data-role="hr" type="button">
+            <span class="auth-card-kicker">HR login</span>
+            <strong>Open HR Portal</strong>
+            <p>Screen candidates, parse job descriptions, and manage hiring workflows.</p>
+          </button>
+        </div>
+      </section>
+
+      <section id="portalShell" class="portal-shell" hidden>
+        <header class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">AI ATS + RAG workflow</p>
+            <h1>HireFlow AI</h1>
+            <p class="lede">
+              A role-based hiring platform for students and recruiters. Analyze resumes, match jobs,
+              generate interview prep, rank candidates, and automate screening workflows.
+            </p>
+          </div>
+          <div class="hero-stats">
+            <div class="stat">
+              <span>Applications</span>
+              <strong id="heroApplications">327</strong>
+            </div>
+            <div class="stat">
+              <span>Shortlisted</span>
+              <strong id="heroShortlisted">58</strong>
+            </div>
+            <div class="stat">
+              <span>Average ATS</span>
+              <strong id="heroAts">84.2</strong>
+            </div>
+          </div>
+        </header>
+
+        <div class="portal-bar">
+          <div class="role-chip" id="activeRoleChip">Student access</div>
+          <button class="ghost-button" id="switchRole" type="button">Switch role</button>
+        </div>
+
+        <div class="portal-content">
+          <section id="studentSection" class="panel">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Candidate experience</p>
+                <h2>Student Portal</h2>
+              </div>
+              <button class="ghost-button" id="loadSampleResume" type="button">Load sample resume</button>
+            </div>
+
+            <div class="grid-2">
+              <article class="card">
+                <h3>Resume Analysis</h3>
+                <label>Resume</label>
+                <textarea id="studentResume" rows="12" placeholder="Paste your resume here"></textarea>
+                <label>Job Description</label>
+                <textarea id="studentJobDescription" rows="8" placeholder="Paste a job description here"></textarea>
+                <div class="button-row">
+                  <button class="primary" data-action="analyzeResume">Analyze</button>
+                  <button class="secondary" data-action="matchJob">Match Job</button>
+                </div>
+              </article>
+
+              <article class="card output-card">
+                <h3>Analysis Output</h3>
+                <div id="studentMetrics" class="metrics"></div>
+                <div id="studentLists" class="list-stack"></div>
+              </article>
+            </div>
+
+            <div class="grid-3">
+              <article class="card">
+                <h3>AI Resume Improvement</h3>
+                <label>Target role</label>
+                <select id="targetRole">
+                  <option>AI Engineer</option>
+                  <option>Frontend Engineer</option>
+                  <option>Backend Engineer</option>
+                  <option>Data Scientist</option>
+                </select>
+                <button class="primary block" data-action="improveResume">Improve Resume</button>
+                <div id="improvedResume" class="result-box"></div>
+              </article>
+
+              <article class="card">
+                <h3>AI Cover Letter</h3>
+                <button class="primary block" data-action="generateCoverLetter">Generate Cover Letter</button>
+                <div id="coverLetter" class="result-box"></div>
+              </article>
+
+              <article class="card">
+                <h3>AI Interview Prep</h3>
+                <button class="primary block" data-action="generateInterviewPrep">Generate Questions</button>
+                <div id="interviewPrep" class="result-box"></div>
+              </article>
+            </div>
+
+            <div class="grid-2">
+              <article class="card">
+                <h3>AI Career Advisor</h3>
+                <label>Your question</label>
+                <input id="careerQuestion" type="text" placeholder="Which project should I build?" />
+                <button class="primary block" data-action="careerAdvice">Ask Advisor</button>
+                <div id="careerAnswer" class="result-box"></div>
+              </article>
+
+              <article class="card">
+                <h3>Resume Versions</h3>
+                <button class="secondary block" data-action="loadVersions">Generate Role Versions</button>
+                <div id="resumeVersions" class="result-box"></div>
+              </article>
+            </div>
+          </section>
+
+          <section id="hrSection" class="panel">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Recruiter workflows</p>
+                <h2>HR Portal</h2>
+              </div>
+              <button class="ghost-button" id="loadSampleJD" type="button">Load sample JD</button>
+            </div>
+
+            <div class="grid-2">
+              <article class="card">
+                <h3>Upload Job Description</h3>
+                <label>Job description</label>
+                <textarea id="hrJobDescription" rows="12" placeholder="Paste the job description here"></textarea>
+                <div class="button-row">
+                  <button class="primary" data-action="parseJD">Extract JD</button>
+                  <button class="secondary" data-action="refreshDashboard">Refresh Dashboard</button>
+                </div>
+              </article>
+
+              <article class="card output-card">
+                <h3>Dashboard Snapshot</h3>
+                <div id="dashboardCards" class="metrics"></div>
+                <div id="dashboardCharts" class="list-stack"></div>
+              </article>
+            </div>
+
+            <div class="grid-2">
+              <article class="card">
+                <h3>Resume Screening</h3>
+                <label>Candidate resume</label>
+                <textarea id="hrResume" rows="12" placeholder="Paste candidate resume here"></textarea>
+                <button class="primary block" data-action="screenResume">Screen Candidate</button>
+                <div id="screeningOutput" class="result-box"></div>
+              </article>
+
+              <article class="card">
+                <h3>Candidate Ranking</h3>
+                <label>Candidate bundle</label>
+                <textarea id="rankingInput" rows="12" placeholder='Paste JSON array with objects: [{"name":"A","resume_text":"..."}]'></textarea>
+                <button class="secondary block" data-action="rankCandidates">Rank Candidates</button>
+                <div id="rankingOutput" class="result-box"></div>
+              </article>
+            </div>
+
+            <div class="grid-3">
+              <article class="card">
+                <h3>Assessment Generation</h3>
+                <input id="assessmentTopic" type="text" placeholder="Python" />
+                <select id="assessmentLevel">
+                  <option>intermediate</option>
+                  <option>junior</option>
+                  <option>senior</option>
+                </select>
+                <button class="primary block" data-action="generateAssessment">Generate MCQs</button>
+                <div id="assessmentOutput" class="result-box"></div>
+              </article>
+
+              <article class="card">
+                <h3>Auto Evaluation</h3>
+                <textarea id="candidateAnswers" rows="8" placeholder="Paste candidate answers, one per line"></textarea>
+                <button class="primary block" data-action="evaluateAssessment">Evaluate</button>
+                <div id="evaluationOutput" class="result-box"></div>
+              </article>
+
+              <article class="card">
+                <h3>HR Chatbot</h3>
+                <input id="chatQuery" type="text" placeholder="Show candidates who know Python React Docker" />
+                <button class="primary block" data-action="askHRChat">Ask HR Bot</button>
+                <div id="chatOutput" class="result-box"></div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
