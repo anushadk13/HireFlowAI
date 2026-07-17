@@ -14,8 +14,7 @@ from pydantic import BaseModel, Field
 
 
 BASE_DIR = Path(__file__).resolve().parent
-TEMPLATES_DIR = BASE_DIR / "templates"
-STATIC_DIR = BASE_DIR / "static"
+FRONTEND_DIR = BASE_DIR.parent / "frontend"
 
 
 app = FastAPI(title="HireFlow AI", version="1.0.0")
@@ -28,8 +27,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 
 SKILL_ALIASES: dict[str, list[str]] = {
@@ -491,7 +490,7 @@ def interview_slots(score: int) -> dict[str, Any]:
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> HTMLResponse:
-    template_path = TEMPLATES_DIR / "index.html"
+    template_path = FRONTEND_DIR / "index.html"
     if template_path.exists():
         return HTMLResponse(template_path.read_text(encoding="utf-8"))
     return HTMLResponse("<h1>HireFlow AI</h1>")
