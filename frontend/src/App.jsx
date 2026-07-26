@@ -1,3 +1,12 @@
+import { useEffect, useState } from "react";
+
+import HRPortal from "./hr-portal/HRPortal.jsx";
+import LoginScreen from "./login/LoginScreen.jsx";
+import StudentPortal from "./student-portal/StudentPortal.jsx";
+
+const STUDENT_IMAGE_SRC = "/images/image.png";
+const HR_IMAGE_SRC = "/images/HR.png";
+
 const navItems = [
   { label: "Home", href: "#home", active: true },
   { label: "Features", href: "#features" },
@@ -227,10 +236,12 @@ function FeatureCard({ label, title, copy, features, tone, cta, illustration }) 
           </div>
         ))}
       </div>
-      <button className={`cta-button ${tone}`} type="button" onClick={cta.onClick}>
-        {cta.label}
-        <span aria-hidden="true">→</span>
-      </button>
+      {cta ? (
+        <button className={`cta-button ${tone}`} type="button" onClick={cta.onClick}>
+          {cta.label}
+          <span aria-hidden="true">→</span>
+        </button>
+      ) : null}
     </article>
   );
 }
@@ -264,59 +275,7 @@ function StepCard({ number, title, copy, icon, isLast }) {
   );
 }
 
-function StudentIllustration() {
-  return (
-    <div className="illustration student">
-      <div className="floating-card ats">
-        <span>ATS Score</span>
-        <strong>87</strong>
-        <small>Good Match</small>
-      </div>
-      <div className="floating-card doc" />
-      <div className="floating-card sparkle">
-        <Icon name="spark" />
-      </div>
-      <div className="avatar student-avatar" />
-      <div className="laptop">
-        <div className="screen" />
-        <div className="base" />
-      </div>
-      <div className="status-dot success" />
-    </div>
-  );
-}
-
-function HrIllustration() {
-  return (
-    <div className="illustration hr">
-      <div className="floating-card profile">
-        <div className="profile-row">
-          <div className="profile-avatar" />
-          <div className="profile-lines">
-            <span />
-            <span />
-          </div>
-        </div>
-        <div className="check-row">
-          <span />
-          <span />
-        </div>
-      </div>
-      <div className="floating-card linkedin-badge">in</div>
-      <div className="floating-card chart-badge">
-        <Icon name="check" />
-      </div>
-      <div className="avatar hr-avatar" />
-      <div className="laptop blue">
-        <div className="screen" />
-        <div className="base" />
-      </div>
-      <div className="status-dot blue" />
-    </div>
-  );
-}
-
-export default function App() {
+function HomePage({ onLogin }) {
   return (
     <main className="home-page" id="home">
       <header className="topbar">
@@ -343,11 +302,8 @@ export default function App() {
         </nav>
 
         <div className="topbar-actions">
-          <button className="ghost-button" type="button" onClick={() => scrollToId("features")}>
-            Login
-          </button>
-          <button className="primary-button" type="button" onClick={() => scrollToId("features")}>
-            Get Started
+          <button className="ghost-button" type="button" onClick={onLogin}>
+            Sign In
           </button>
         </div>
       </header>
@@ -377,11 +333,13 @@ export default function App() {
           copy="Upload, analyze and improve your application to stand out and get hired."
           tone="violet"
           features={studentFeatures}
-          cta={{
-            label: "Go to Student Dashboard",
-            onClick: () => scrollToId("how-it-works"),
-          }}
-          illustration={<StudentIllustration />}
+          illustration={
+            <img
+              className="feature-card-image feature-card-image--student"
+              src={STUDENT_IMAGE_SRC}
+              alt="Student"
+            />
+          }
         />
 
         <FeatureCard
@@ -390,11 +348,13 @@ export default function App() {
           copy="Let AI screen, analyze and shortlist the best candidates for you."
           tone="blue"
           features={hrFeatures}
-          cta={{
-            label: "Go to HR Dashboard",
-            onClick: () => scrollToId("how-it-works"),
-          }}
-          illustration={<HrIllustration />}
+          illustration={
+            <img
+              className="feature-card-image feature-card-image--hr"
+              src={HR_IMAGE_SRC}
+              alt="HR recruiter"
+            />
+          }
         />
       </section>
 
@@ -424,4 +384,61 @@ export default function App() {
       </section>
     </main>
   );
+}
+
+function getInitialView() {
+  if (typeof window === "undefined") {
+    return "home";
+  }
+
+  return window.sessionStorage.getItem("hireflow-auth-view") || "home";
+}
+
+export default function App() {
+  const [view, setView] = useState(getInitialView);
+
+  useEffect(() => {
+    const handleRouteEvent = (event) => {
+      const nextView = event.detail?.view;
+      if (nextView === "student" || nextView === "hr") {
+        setView(nextView);
+      }
+    };
+
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    window.addEventListener("hireflow-auth-route", handleRouteEvent);
+    return () => window.removeEventListener("hireflow-auth-route", handleRouteEvent);
+  }, []);
+
+  const handleSelectStudent = () => {
+    setView("student");
+  };
+
+  const handleSelectHr = () => {
+    setView("hr");
+  };
+
+  if (view === "login") {
+    return (
+      <LoginScreen
+        onBack={() => setView("home")}
+        onSelectStudent={handleSelectStudent}
+        onSelectHr={handleSelectHr}
+        LogoMark={LogoMark}
+      />
+    );
+  }
+
+  if (view === "student") {
+    return <StudentPortal onBack={() => setView("login")} />;
+  }
+
+  if (view === "hr") {
+    return <HRPortal onBack={() => setView("login")} />;
+  }
+
+  return <HomePage onLogin={() => setView("login")} />;
 }
