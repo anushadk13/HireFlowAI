@@ -36,3 +36,31 @@ class ChatInput(BaseModel):
     message: str
     skills: list[str] = Field(default_factory=list)
 
+
+class AuthLookupInput(BaseModel):
+    email: str = Field(..., min_length=3)
+
+
+class AuthLoginInput(BaseModel):
+    email: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=1)
+
+
+class AuthUpsertInput(BaseModel):
+    email: str = Field(..., min_length=3)
+    display_name: str = ""
+    role: str = Field(..., min_length=1)
+    password: str = ""
+    provider: str = "google"
+    firebase_uid: str = ""
+
+
+class AuthAccount(BaseModel):
+    id: str
+    email: str
+    display_name: str = ""
+    role: str
+    provider: str = "google"
+    firebase_uid: str = ""
+    created_at: str
+    updated_at: str
