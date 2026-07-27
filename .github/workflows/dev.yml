@@ -3,7 +3,7 @@ name: Deploy FastAPI to Azure (Dev)
 on:
   push:
     branches:
-      - users/anushadk/dev
+      - main
 
 permissions:
   contents: read
