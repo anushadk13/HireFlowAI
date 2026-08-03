@@ -55,7 +55,19 @@ class AuthUpsertInput(BaseModel):
     firebase_uid: str = ""
 
 
-class AuthAccount(BaseModel):
+class AuthStoredAccount(BaseModel):
+    id: str
+    email: str
+    display_name: str = ""
+    role: str
+    password: str
+    provider: str = "google"
+    firebase_uid: str = ""
+    created_at: str
+    updated_at: str
+
+
+class AuthPublicAccount(BaseModel):
     id: str
     email: str
     display_name: str = ""

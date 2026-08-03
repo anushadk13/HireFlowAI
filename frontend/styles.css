@@ -333,8 +333,15 @@ button {
 .feature-card-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 290px;
+  grid-template-areas:
+    "tag illustration"
+    "copy illustration";
   gap: 18px;
-  align-items: center;
+  align-items: start;
+}
+
+.card-tag {
+  grid-area: tag;
 }
 
 .card-tag {
@@ -369,6 +376,10 @@ button {
   letter-spacing: -0.04em;
 }
 
+.feature-copy {
+  grid-area: copy;
+}
+
 .feature-copy p {
   margin: 0;
   color: var(--muted);
@@ -378,9 +389,11 @@ button {
 }
 
 .feature-illustration {
+  grid-area: illustration;
   display: flex;
   justify-content: center;
   align-items: center;
+  padding-top: 8px;
   min-height: 220px;
 }
 
@@ -1123,11 +1136,12 @@ button {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+    border-radius: 46px 46px 28px 28px;
+  bottom: 34px;
   }
 }
-  border-radius: 46px 46px 28px 28px;
-  bottom: 34px;
-}
+  
+
 
 .student-avatar {
   background:
@@ -1235,11 +1249,15 @@ button {
 @media (max-width: 1260px) {
   .feature-card-head {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "illustration"
+      "tag"
+      "copy";
   }
 
   .feature-illustration {
     min-height: 230px;
-    order: -1;
+    padding-top: 0;
   }
 
   .feature-grid {

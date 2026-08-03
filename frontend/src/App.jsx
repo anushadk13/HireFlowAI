@@ -4,7 +4,7 @@ import HRPortal from "./hr-portal/HRPortal.jsx";
 import LoginScreen from "./login/LoginScreen.jsx";
 import StudentPortal from "./student-portal/StudentPortal.jsx";
 
-const STUDENT_IMAGE_SRC = "/images/image.png";
+const STUDENT_IMAGE_SRC = import.meta.env.VITE_STUDENT_LOGO_SRC || "/images/student.png";
 const HR_IMAGE_SRC = "/images/HR.png";
 
 const navItems = [
@@ -378,9 +378,6 @@ function HomePage({ onLogin }) {
           <p className="eyebrow">Ready to start</p>
           <h2>One platform for students and recruiters.</h2>
         </div>
-        <button className="primary-button" type="button" onClick={() => scrollToId("hero")}>
-          Back to top
-        </button>
       </section>
     </main>
   );

@@ -11,8 +11,6 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
-    # Use the GitHub Environment named "Dev"
     environment: Dev
 
     steps:

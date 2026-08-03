@@ -4,6 +4,7 @@ import { onAuthStateChanged, signInWithPopup, signInWithRedirect } from "firebas
 import { auth, googleProvider } from "../firebase.js";
 
 const API_BASE = "http://localhost:8000";
+const STUDENT_PREVIEW_SRC = import.meta.env.VITE_STUDENT_LOGO_SRC || "/images/student.png";
 
 function GoogleIcon() {
   return (
@@ -300,7 +301,7 @@ export default function LoginScreen({ onBack, onSelectStudent, onSelectHr, LogoM
 
             <div className="auth-visual__stack">
               <article className="auth-preview auth-preview--student">
-                <img src="/images/image.png" alt="Student preview" />
+                <img src={STUDENT_PREVIEW_SRC} alt="Student preview" />
                 <div>
                   <strong>Student mode</strong>
                   <span>Resume help, job match, interview prep</span>
