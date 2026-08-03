@@ -1,13 +1,22 @@
 from __future__ import annotations
-
+import base64
+import binascii
+import hashlib
 import os
+import hmac
+import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+_PASSWORD_SCHEME = "pbkdf2_sha256"
+_PASSWORD_ITERATIONS = 310_000
+_PASSWORD_SALT_BYTES = 16
+
 
 def _load_env_file() -> None:
     candidates = [
+        Path(__file__).resolve().parents[1] / ".env",
         Path(__file__).resolve().parents[2] / ".env",
         Path.cwd() / ".env",
     ]
@@ -34,6 +43,55 @@ def _utc_now() -> str:
 
 def _normalize_email(email: str) -> str:
     return email.strip().lower()
+
+
+def _hash_password(password: str) -> str:
+    salt = secrets.token_bytes(_PASSWORD_SALT_BYTES)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.strip().encode("utf-8"),
+        salt,
+        _PASSWORD_ITERATIONS,
+    )
+    salt_b64 = base64.urlsafe_b64encode(salt).decode("ascii").rstrip("=")
+    digest_b64 = base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+    return f"{_PASSWORD_SCHEME}${_PASSWORD_ITERATIONS}${salt_b64}${digest_b64}"
+
+
+def _verify_password(password: str, stored_password: str) -> bool:
+    if stored_password.startswith(f"{_PASSWORD_SCHEME}$"):
+        try:
+            _, iterations_raw, salt_b64, digest_b64 = stored_password.split("$", 3)
+            iterations = int(iterations_raw)
+            salt = base64.urlsafe_b64decode(salt_b64 + "=" * (-len(salt_b64) % 4))
+            expected_digest = base64.urlsafe_b64decode(digest_b64 + "=" * (-len(digest_b64) % 4))
+        except (ValueError, TypeError, binascii.Error):
+            return False
+
+        candidate_digest = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.strip().encode("utf-8"),
+            salt,
+            iterations,
+        )
+        return hmac.compare_digest(candidate_digest, expected_digest)
+
+    return hmac.compare_digest(stored_password.strip(), password.strip())
+
+
+def _is_password_hash(value: str) -> bool:
+    return value.startswith(f"{_PASSWORD_SCHEME}$")
+
+
+def _set_account(account: dict[str, Any]) -> None:
+    email = str(account.get("email", "")).strip().lower()
+    if not email:
+        return
+
+    if auth_store._mode == "cosmos" and auth_store._container is not None:
+        auth_store._container.upsert_item(account)
+    else:
+        auth_store._memory[email] = account
 
 
 class AuthStore:
@@ -102,14 +160,24 @@ class AuthStore:
             return None
 
         stored_password = str(account.get("password", "")).strip()
-        if not stored_password or stored_password != password.strip():
+        if not stored_password or not _verify_password(password, stored_password):
             return None
+
+        if not _is_password_hash(stored_password):
+            migrated_account = dict(account)
+            migrated_account["password"] = _hash_password(password)
+            migrated_account["updated_at"] = _utc_now()
+            _set_account(migrated_account)
+            return migrated_account
 
         return account
 
     def upsert_account(self, payload: dict[str, Any]) -> dict[str, Any]:
         email = _normalize_email(str(payload.get("email", "")))
         existing = self.get_account(email)
+        if existing:
+            raise ValueError("Account already exists")
+
         now = _utc_now()
         partition_value = self._partition_value(email, payload)
         account = {
@@ -117,22 +185,17 @@ class AuthStore:
             "email": email,
             "display_name": str(payload.get("display_name", "")).strip(),
             "role": str(payload.get("role", "")).strip().lower(),
-            "password": str(payload.get("password", "")).strip(),
+            "password": "",
             "provider": str(payload.get("provider", "google")).strip().lower(),
             "firebase_uid": str(payload.get("firebase_uid", "")).strip(),
             self._partition_key_name: partition_value,
-            "created_at": existing.get("created_at", now) if existing else now,
+            "created_at": now,
             "updated_at": now,
         }
 
-        if existing and not account["display_name"]:
-            account["display_name"] = existing.get("display_name", "")
-        if existing and not account["firebase_uid"]:
-            account["firebase_uid"] = existing.get("firebase_uid", "")
-        if existing and not account["role"]:
-            account["role"] = existing.get("role", "")
-        if existing and not account["password"]:
-            account["password"] = existing.get("password", "")
+        raw_password = str(payload.get("password", "")).strip()
+        if raw_password:
+            account["password"] = raw_password if _is_password_hash(raw_password) else _hash_password(raw_password)
 
         if self._mode == "cosmos" and self._container is not None:
             self._container.upsert_item(account)

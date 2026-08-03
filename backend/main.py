@@ -1,11 +1,8 @@
 from __future__ import annotations
-
 from typing import Any
-
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
 from backend.routers.health import router as health_router
 from backend.routers.auth import router as auth_router
 from backend.routers.hr import router as hr_router
