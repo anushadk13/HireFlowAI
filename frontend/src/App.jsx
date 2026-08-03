@@ -430,7 +430,7 @@ export default function App() {
   }
 
   if (view === "student") {
-    return <StudentPortal onBack={() => setView("login")} />;
+    return <StudentPortal />;
   }
 
   if (view === "hr") {

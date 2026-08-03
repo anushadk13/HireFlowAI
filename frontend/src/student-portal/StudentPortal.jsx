@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import LiveCoverLetter from "./LiveCoverLetter.jsx";
+import StudentResumePreview from "./StudentResumePreview.jsx";
 import "./StudentPortal.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
-const STUDENT_LOGO_SRC = import.meta.env.VITE_STUDENT_LOGO_SRC || "/images/student.png";
 
 const SAMPLE_RESUME = `Nina Carter
 AI Engineer
@@ -116,10 +116,10 @@ function ChipList({ items, tone = "purple" }) {
   );
 }
 
-export default function StudentPortal({ onBack }) {
+export default function StudentPortal() {
   const resumeInputRef = useRef(null);
-  const [resume, setResume] = useState(SAMPLE_RESUME);
-  const [jobDescription, setJobDescription] = useState(SAMPLE_JD);
+  const [resume, setResume] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
   const [resumeMode, setResumeMode] = useState("upload");
   const [activeTemplate, setActiveTemplate] = useState("Professional");
   const [activeSection, setActiveSection] = useState("analyzer");
@@ -136,41 +136,39 @@ export default function StudentPortal({ onBack }) {
   const [loading, setLoading] = useState(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    void runAnalysis(SAMPLE_RESUME, SAMPLE_JD);
-  }, []);
-
   const summary = getResumeHeader(resume);
-  const score = formatPercent(
-    matchResult?.match_score ?? analysisResult?.resume_score ?? analysisResult?.ats_score ?? 88,
-    88
-  );
-  const skillsMatch = formatPercent(
-    matchResult?.skills_match_score ?? analysisResult?.skills_match_score ?? 87,
-    87
-  );
-  const completeness = formatPercent(analysisResult?.resume_score ?? analysisResult?.ats_score ?? 85, 85);
-  const experienceMatch = formatPercent(analysisResult?.experience_score ?? 80, 80);
-  const keywordsMatch = formatPercent(analysisResult?.keywords_score ?? 85, 85);
-  const formatMatch = formatPercent(analysisResult?.formatting_score ?? 90, 90);
+  const hasAnalysis = Boolean(analysisResult || matchResult);
+  const score = hasAnalysis
+    ? formatPercent(matchResult?.match_score ?? analysisResult?.resume_score ?? analysisResult?.ats_score ?? 88, 88)
+    : 0;
+  const skillsMatch = hasAnalysis ? formatPercent(matchResult?.skills_match_score ?? analysisResult?.skills_match_score ?? 87, 87) : 0;
+  const experienceMatch = hasAnalysis ? formatPercent(analysisResult?.experience_score ?? 80, 80) : 0;
+  const keywordsMatch = hasAnalysis ? formatPercent(analysisResult?.keywords_score ?? 85, 85) : 0;
+  const formatMatch = hasAnalysis ? formatPercent(analysisResult?.formatting_score ?? 90, 90) : 0;
 
-  const matchedSkills = pickArray(analysisResult?.matched_skills).length
-    ? analysisResult.matched_skills
-    : pickArray(matchResult?.skills_match).length
-      ? matchResult.skills_match
-      : DEFAULT_SKILLS;
+  const matchedSkills = hasAnalysis
+    ? pickArray(analysisResult?.matched_skills).length
+      ? analysisResult.matched_skills
+      : pickArray(matchResult?.skills_match).length
+        ? matchResult.skills_match
+        : DEFAULT_SKILLS
+    : [];
 
-  const missingSkills = pickArray(analysisResult?.missing_skills).length
-    ? analysisResult.missing_skills
-    : pickArray(matchResult?.missing_skills).length
-      ? matchResult.missing_skills
-      : DEFAULT_MISSING;
+  const missingSkills = hasAnalysis
+    ? pickArray(analysisResult?.missing_skills).length
+      ? analysisResult.missing_skills
+      : pickArray(matchResult?.missing_skills).length
+        ? matchResult.missing_skills
+        : DEFAULT_MISSING
+    : [];
 
-  const improvementTips = pickArray(matchResult?.improvement?.improvement_suggestions).length
-    ? matchResult.improvement.improvement_suggestions
-    : pickArray(matchResult?.improvement?.suggestions).length
-      ? matchResult.improvement.suggestions
-      : DEFAULT_IMPROVEMENTS;
+  const improvementTips = hasAnalysis
+    ? pickArray(matchResult?.improvement?.improvement_suggestions).length
+      ? matchResult.improvement.improvement_suggestions
+      : pickArray(matchResult?.improvement?.suggestions).length
+        ? matchResult.improvement.suggestions
+        : DEFAULT_IMPROVEMENTS
+    : [];
 
   async function runAnalysis(resumeText = resume, jobText = jobDescription) {
     if (!resumeText.trim() || !jobText.trim()) {
@@ -288,320 +286,9 @@ export default function StudentPortal({ onBack }) {
       <main className="student-portal__content">
         {error && <div className="student-portal__error">{error}</div>}
 
-        {activeSection !== "cover-letter" ? (
-          <>
-            <section className="student-portal__workspace-grid">
-          <article className="student-portal__panel">
-            <div className="student-portal__panel-header">
-              <div>
-                <div className="student-portal__panel-step">
-                  <span>1</span>
-                  <h2>Job Description</h2>
-                </div>
-                <p className="student-portal__panel-subtitle">Paste the job description</p>
-              </div>
-            </div>
-
-            <div className="student-portal__job-card">
-              <div className="student-portal__job-topline">
-                <div className="student-portal__company-mark">G</div>
-                <div className="student-portal__job-company">
-                  <strong>Google</strong>
-                  <div>Mountain View, CA • Full-time</div>
-                </div>
-                <span className="student-portal__job-tag">Software Engineer</span>
-              </div>
-
-              <div className="student-portal__job-meta">
-                <div>
-                  <span className="student-portal__meta-label">Experience</span>
-                  <strong>2-4 Years</strong>
-                </div>
-                <div>
-                  <span className="student-portal__meta-label">Salary</span>
-                  <strong>$120K - $180K</strong>
-                </div>
-                <div>
-                  <span className="student-portal__meta-label">Type</span>
-                  <strong>Full-time</strong>
-                </div>
-              </div>
-
-              <div className="student-portal__job-section">
-                <h3>About the role</h3>
-                <textarea
-                  className="student-portal__textarea student-portal__textarea--job"
-                  placeholder="Paste the job description here"
-                  value={jobDescription}
-                  onChange={(e) => setJobDescription(e.target.value)}
-                />
-                <div className="student-portal__counter">{jobDescription.length} / 5000 characters</div>
-              </div>
-
-              <div className="student-portal__job-section">
-                <h3>Key Skills Detected</h3>
-                <ChipList items={matchedSkills.slice(0, 8)} />
-              </div>
-
-              <button className="student-portal__text-link" type="button" onClick={handleNewAnalysis}>
-                Run analysis <span aria-hidden="true">→</span>
-              </button>
-            </div>
-          </article>
-
-          <article className="student-portal__panel student-portal__panel--resume">
-            <div className="student-portal__panel-header student-portal__panel-header--split">
-              <div>
-                <div className="student-portal__panel-step">
-                  <span>2</span>
-                  <h2>Your Resume</h2>
-                </div>
-                <p className="student-portal__panel-subtitle">Upload or paste your resume</p>
-              </div>
-
-              <div className="student-portal__panel-actions">
-                <button className="student-portal__ghost-button" type="button" onClick={() => resumeInputRef.current?.click()}>
-                  ⤴ Upload File
-                </button>
-                <button className="student-portal__ghost-button" type="button" onClick={handleResetResume}>
-                  ⌁ New Resume
-                </button>
-                <input
-                  ref={resumeInputRef}
-                  className="student-portal__hidden-input"
-                  type="file"
-                  accept=".txt,.md,.csv,.json,.html,.htm,.log,.pdf,.docx"
-                  onChange={handleResumeUpload}
-                />
-              </div>
-            </div>
-
-            <div className="student-portal__upload-tabs" role="tablist" aria-label="Resume source">
-              <button
-                className={`student-portal__upload-tab${resumeMode === "upload" ? " is-active" : ""}`}
-                type="button"
-                onClick={() => setResumeMode("upload")}
-              >
-                Upload File
-              </button>
-              <button
-                className={`student-portal__upload-tab${resumeMode === "paste" ? " is-active" : ""}`}
-                type="button"
-                onClick={() => setResumeMode("paste")}
-              >
-                Paste Text
-              </button>
-            </div>
-
-            <div className="student-portal__upload-summary">
-              <div className="student-portal__file-card">
-                <div className="student-portal__file-pill">
-                  <span className="student-portal__file-icon">PDF</span>
-                  <div>
-                    <strong>{resumeFileName}</strong>
-                    <span>{resumeFileSize}</span>
-                  </div>
-                </div>
-                <span className="student-portal__success-dot" />
-              </div>
-
-              <div className="student-portal__dropzone" onClick={() => resumeInputRef.current?.click()} role="button" tabIndex={0}>
-                <div className="student-portal__dropzone-icon" aria-hidden="true">
-                  ⇧
-                </div>
-                <div className="student-portal__dropzone-title">Drag &amp; drop your file here</div>
-                <div className="student-portal__dropzone-copy">Supports PDF, DOCX, TXT and Markdown</div>
-              </div>
-
-              <div className="student-portal__success-callout">
-                <span className="student-portal__success-callout-icon">✓</span>
-                <div>
-                  <strong>Resume parsed successfully</strong>
-                  <p>We extracted text and key information from your resume.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="student-portal__editor-card">
-              <div className="student-portal__editor-toolbar" aria-hidden="true">
-                <span>↶</span>
-                <span>↷</span>
-                <span className="student-portal__toolbar-divider" />
-                <span>Paragraph</span>
-                <span className="student-portal__toolbar-divider" />
-                <span>B</span>
-                <span>I</span>
-                <span>U</span>
-                <span className="student-portal__toolbar-divider" />
-                <span>≡</span>
-                <span>☰</span>
-                <span>🔗</span>
-                <span>{"{}"}</span>
-                <span>&lt;/&gt;</span>
-              </div>
-
-              <textarea
-                className="student-portal__textarea student-portal__textarea--resume"
-                value={resume}
-                onChange={(e) => setResume(e.target.value)}
-                aria-label="Resume editor"
-              />
-
-              <div className="student-portal__editor-footer">
-                <span>{resume.length} / 10000 characters</span>
-                <span className="student-portal__saved">✓ Resume saved</span>
-              </div>
-            </div>
-          </article>
-
-          <article className="student-portal__panel student-portal__panel--preview">
-            <div className="student-portal__panel-header">
-              <div>
-                <div className="student-portal__panel-step">
-                  <span>4</span>
-                  <h2>100% Score Resume Preview</h2>
-                </div>
-                <p className="student-portal__panel-subtitle">See how a perfect resume looks</p>
-              </div>
-            </div>
-
-            <div className="student-portal__preview-document">
-              <div className="student-portal__preview-title">{summary.name.toUpperCase()}</div>
-              <div className="student-portal__preview-role">{summary.title}</div>
-              <div className="student-portal__preview-contact">
-                <span>nina.carter@email.com</span>
-                <span>+1 (555) 123-4567</span>
-                <span>San Francisco, CA</span>
-                <span>linkedin.com/in/ninacarter</span>
-              </div>
-
-              <div className="student-portal__preview-section">
-                <h3>SUMMARY</h3>
-                <p>
-                  AI Engineer with 3+ years of experience building intelligent systems and internal tools using Python,
-                  FastAPI, and modern ML techniques. Passionate about turning data into impactful products.
-                </p>
-              </div>
-
-              <div className="student-portal__preview-section">
-                <h3>SKILLS</h3>
-                <p>{matchedSkills.slice(0, 8).join(" • ")}</p>
-              </div>
-
-              <div className="student-portal__preview-section">
-                <h3>EXPERIENCE</h3>
-                <div className="student-portal__preview-row">
-                  <strong>AI Engineer • Tech Solutions Inc.</strong>
-                  <span>Jan 2023 - Present</span>
-                </div>
-                <ul className="student-portal__preview-list">
-                  <li>Built RAG-based prototypes using LangChain and OpenAI, improving answer accuracy by 35%.</li>
-                  <li>Developed internal tools for candidate search, JD parsing, and interview automation.</li>
-                  <li>Integrated APIs and optimized data pipelines, reducing processing time by 40%.</li>
-                </ul>
-              </div>
-
-              <div className="student-portal__preview-section">
-                <h3>PROJECTS</h3>
-                <p><strong>AI Resume Screener</strong> Built an AI tool to parse resumes and rank candidates based on job match.</p>
-                <p><strong>Analytics Dashboard</strong> Developed dashboards to visualize hiring metrics and team performance.</p>
-              </div>
-
-              <div className="student-portal__preview-section">
-                <h3>EDUCATION</h3>
-                <div className="student-portal__preview-row">
-                  <strong>B.S. in Computer Science</strong>
-                  <span>2019 - 2023</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="student-portal__score-card">
-              <div className="student-portal__score-card-head">
-                <div className="student-portal__score-ring-wrap">
-                  <ScoreRing value={score} tone="green" />
-                </div>
-                <div className="student-portal__score-copy">
-                  <strong>100% Score Resume</strong>
-                  <p>This resume is fully optimized for ATS and matches the job description perfectly.</p>
-                </div>
-              </div>
-              <button className="student-portal__download-button" type="button">
-                Download Resume (PDF)
-              </button>
-            </div>
-          </article>
-            </section>
-
-            <section className="student-portal__stats-grid">
-          <article className="student-portal__stat-card">
-            <div className="student-portal__stat-label">ATS SCORE</div>
-            <div className="student-portal__stat-body">
-              <ScoreRing value={score} tone="purple" />
-              <div className="student-portal__stat-copy">
-                <strong>Great Match! 🎉</strong>
-                <p>Your resume is well optimized for this job.</p>
-                <span className="student-portal__hint-pill">Top 14% of candidates</span>
-              </div>
-            </div>
-            <div className="student-portal__stat-metrics">
-              <div><span>Overall Match</span><StatBar value={score} tone="purple" /></div>
-              <div><span>Skills Match</span><StatBar value={skillsMatch} tone="purple" /></div>
-              <div><span>Experience Match</span><StatBar value={experienceMatch} tone="purple" /></div>
-              <div><span>Keywords Match</span><StatBar value={keywordsMatch} tone="purple" /></div>
-              <div><span>Format &amp; Structure</span><StatBar value={formatMatch} tone="purple" /></div>
-            </div>
-          </article>
-
-          <article className="student-portal__stat-card">
-            <div className="student-portal__stat-label">SKILLS MATCH</div>
-            <div className="student-portal__big-number">{skillsMatch}%</div>
-            <StatBar value={skillsMatch} tone="green" />
-            <p className="student-portal__stat-note">Great match! You have most of the required skills.</p>
-            <button className="student-portal__text-link" type="button">
-              View Details <span aria-hidden="true">→</span>
-            </button>
-          </article>
-
-          <article className="student-portal__stat-card">
-            <div className="student-portal__stat-label">MISSING SKILLS</div>
-            <div className="student-portal__missing-head">
-              <span className="student-portal__missing-count">{missingSkills.length}</span>
-              <p>Improve your chances by adding these skills.</p>
-            </div>
-            <ChipList items={missingSkills} tone="amber" />
-            <button className="student-portal__text-link" type="button">
-              View Suggestions <span aria-hidden="true">→</span>
-            </button>
-          </article>
-
-          <article className="student-portal__stat-card">
-            <div className="student-portal__stat-label">IMPROVEMENT SUGGESTIONS</div>
-            <ul className="student-portal__suggestion-list">
-              {improvementTips.slice(0, 4).map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-            <button className="student-portal__text-link" type="button">
-              View All Suggestions <span aria-hidden="true">→</span>
-            </button>
-          </article>
-
-          <article className="student-portal__stat-card student-portal__stat-card--match">
-            <div className="student-portal__stat-label">MATCH PERCENTAGE</div>
-            <div className="student-portal__big-number">{Math.max(score, skillsMatch)}%</div>
-            <p className="student-portal__stat-note">Your profile is a strong match for this job.</p>
-            <div className="student-portal__star-row" aria-hidden="true">
-              <span>★</span>
-              <span>★</span>
-              <span>★</span>
-              <span>★</span>
-              <span>★</span>
-            </div>
-          </article>
-            </section>
-          </>
-        ) : (
+        {activeSection === "preview" ? (
+          <StudentResumePreview summary={summary} matchedSkills={matchedSkills} score={score} />
+        ) : activeSection === "cover-letter" ? (
           <LiveCoverLetter
             coverLetter={coverLetter}
             loading={loading}
@@ -612,6 +299,226 @@ export default function StudentPortal({ onBack }) {
             personalization={coverPersonalization}
             setPersonalization={setCoverPersonalization}
           />
+        ) : (
+          <section className="student-portal__analyzer-layout">
+            <article className="student-portal__panel">
+              <div className="student-portal__panel-header">
+                <div>
+                  <div className="student-portal__panel-step">
+                    <span>1</span>
+                    <h2>Job Description</h2>
+                  </div>
+                  <p className="student-portal__panel-subtitle">Paste the job description</p>
+                </div>
+              </div>
+
+              <textarea
+                className="student-portal__textarea student-portal__textarea--job"
+                placeholder="Paste the job description here..."
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+              />
+
+              <div className="student-portal__section-label">
+                <span aria-hidden="true">📋</span>
+                <h3>Extracted Job Details</h3>
+              </div>
+
+              <div className="student-portal__job-meta">
+                <div className="student-portal__detail-card">
+                  <span className="student-portal__meta-label">Experience</span>
+                  <strong>{hasAnalysis ? "2-4 Years" : "N/A"}</strong>
+                </div>
+                <div className="student-portal__detail-card">
+                  <span className="student-portal__meta-label">Salary</span>
+                  <strong>{hasAnalysis ? "$120K - $180K" : "N/A"}</strong>
+                </div>
+                <div className="student-portal__detail-card">
+                  <span className="student-portal__meta-label">Type</span>
+                  <strong>{hasAnalysis ? "Full-time" : "N/A"}</strong>
+                </div>
+              </div>
+
+              <div className="student-portal__job-section">
+                <h3>About the role</h3>
+                <div className="student-portal__empty-panel">
+                  <div className="student-portal__empty-panel-icon" aria-hidden="true">
+                    ◌
+                  </div>
+                  <strong>{hasAnalysis ? "Parsed job summary will appear here." : "Your pasted job description will appear here."}</strong>
+                  <p>We&apos;ll extract key details and requirements automatically.</p>
+                </div>
+              </div>
+
+              <div className="student-portal__job-section">
+                <h3>Key Skills Detected</h3>
+                {matchedSkills.length ? (
+                  <ChipList items={matchedSkills.slice(0, 8)} />
+                ) : (
+                  <div className="student-portal__empty-panel">
+                    <div className="student-portal__empty-panel-icon" aria-hidden="true">
+                      ✧
+                    </div>
+                    <strong>Detected skills will be shown here</strong>
+                    <p>We&apos;ll highlight important skills from the job description.</p>
+                  </div>
+                )}
+              </div>
+
+              <button className="student-portal__text-link" type="button" onClick={handleNewAnalysis}>
+                Run analysis <span aria-hidden="true">→</span>
+              </button>
+            </article>
+
+            <article className="student-portal__panel student-portal__panel--resume">
+              <div className="student-portal__panel-header student-portal__panel-header--split">
+                <div>
+                  <div className="student-portal__panel-step">
+                    <span>2</span>
+                    <h2>Your Resume</h2>
+                  </div>
+                  <p className="student-portal__panel-subtitle">Upload or paste your resume</p>
+                </div>
+
+      
+              </div>
+
+              <div className="student-portal__upload-tabs" role="tablist" aria-label="Resume source">
+                <button
+                  className={`student-portal__upload-tab${resumeMode === "upload" ? " is-active" : ""}`}
+                  type="button"
+                  onClick={() => setResumeMode("upload")}
+                >
+                  Upload File
+                </button>
+                <button
+                  className={`student-portal__upload-tab${resumeMode === "paste" ? " is-active" : ""}`}
+                  type="button"
+                  onClick={() => setResumeMode("paste")}
+                >
+                  Paste Text
+                </button>
+              </div>
+
+              {resumeMode === "upload" ? (
+                <div className="student-portal__upload-summary">
+                  <div className="student-portal__dropzone" onClick={() => resumeInputRef.current?.click()} role="button" tabIndex={0}>
+                    <div className="student-portal__dropzone-title">Drag &amp; drop your file here</div>
+                    <div className="student-portal__dropzone-copy">or</div>
+                    <button className="student-portal__dropzone-button" type="button" onClick={() => resumeInputRef.current?.click()}>
+                      Choose File
+                    </button>
+                    <div className="student-portal__dropzone-copy">Supports PDF, DOCX, TXT and Markdown</div>
+                  </div>
+
+                  <div className="student-portal__success-callout">
+                    <span className="student-portal__success-callout-icon">✓</span>
+                    <div>
+                      <strong>Resume parsed successfully</strong>
+                      <p>We extracted text and key information from your resume.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="student-portal__editor-card">
+                <div className="student-portal__editor-toolbar" aria-hidden="true">
+                  <span>↶</span>
+                  <span>↷</span>
+                  <span className="student-portal__toolbar-divider" />
+                  <span>Paragraph</span>
+                  <span className="student-portal__toolbar-divider" />
+                  <span>B</span>
+                  <span>I</span>
+                  <span>U</span>
+                  <span className="student-portal__toolbar-divider" />
+                  <span>≡</span>
+                  <span>☰</span>
+                  <span>🔗</span>
+                  <span>{"{}"}</span>
+                  <span>&lt;/&gt;</span>
+                </div>
+
+                <textarea
+                  className="student-portal__textarea student-portal__textarea--resume"
+                  value={resume}
+                  onChange={(e) => setResume(e.target.value)}
+                  aria-label="Resume editor"
+                  placeholder={`Your resume content will appear here...
+You can edit the text if needed.`}
+                />
+
+                <div className="student-portal__editor-footer">
+                  <span>{resume.length} / 10000 characters</span>
+                </div>
+              </div>
+            </article>
+
+            <section className="student-portal__stats-grid">
+              <article className="student-portal__stat-card">
+                <div className="student-portal__stat-label">ATS SCORE</div>
+                <div className="student-portal__stat-body">
+                  <ScoreRing value={score} tone="purple" />
+                  <div className="student-portal__stat-copy">
+                    <strong>{hasAnalysis ? "Great Match! 🎉" : "No match yet"}</strong>
+                    <p>{hasAnalysis ? "Your resume is well optimized for this job." : "Enter job description and upload your resume to see the score."}</p>
+                    <span className="student-portal__hint-pill">{hasAnalysis ? "Top 14% of candidates" : "-"}</span>
+                  </div>
+                </div>
+                <div className="student-portal__stat-metrics">
+                  <div><span>Overall Match</span><StatBar value={score} tone="purple" /></div>
+                  <div><span>Skills Match</span><StatBar value={skillsMatch} tone="purple" /></div>
+                  <div><span>Experience Match</span><StatBar value={experienceMatch} tone="purple" /></div>
+                  <div><span>Keywords Match</span><StatBar value={keywordsMatch} tone="purple" /></div>
+                  <div><span>Format &amp; Structure</span><StatBar value={formatMatch} tone="purple" /></div>
+                </div>
+              </article>
+
+              <article className="student-portal__stat-card">
+                <div className="student-portal__stat-label">SKILLS MATCH</div>
+                <div className="student-portal__big-number">{skillsMatch}%</div>
+                <StatBar value={skillsMatch} tone="green" />
+                <p className="student-portal__stat-note">{hasAnalysis ? "Great match! You have most of the required skills." : "No skills matched yet."}</p>
+                <button className="student-portal__text-link" type="button">
+                  View Details <span aria-hidden="true">→</span>
+                </button>
+              </article>
+
+              <article className="student-portal__stat-card">
+                <div className="student-portal__stat-label">MISSING SKILLS</div>
+                <div className="student-portal__missing-head">
+                  <span className="student-portal__missing-count">{missingSkills.length}</span>
+                  <p>{hasAnalysis ? "Skills that you might be missing." : "Enter job description to see missing skills"}</p>
+                </div>
+                {missingSkills.length ? (
+                  <ChipList items={missingSkills} tone="amber" />
+                ) : (
+                  <div className="student-portal__empty-inline">Enter job description to see missing skills</div>
+                )}
+                <button className="student-portal__text-link" type="button">
+                  View Suggestions <span aria-hidden="true">→</span>
+                </button>
+              </article>
+
+              <article className="student-portal__stat-card">
+                <div className="student-portal__stat-label">IMPROVEMENT SUGGESTIONS</div>
+                {improvementTips.length ? (
+                  <ul className="student-portal__suggestion-list">
+                    {improvementTips.slice(0, 4).map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="student-portal__empty-panel student-portal__empty-panel--tight">
+                    <strong>Get AI-powered suggestions to improve your resume for better matches.</strong>
+                  </div>
+                )}
+                <button className="student-portal__text-link" type="button">
+                  View Suggestions <span aria-hidden="true">→</span>
+                </button>
+              </article>
+            </section>
+          </section>
         )}
       </main>
     </div>
