@@ -213,9 +213,9 @@
 
 .student-portal__content {
   min-width: 0;
-  padding: 24px 24px 28px;
+  padding: 20px;
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 
 .student-portal__hero {
@@ -352,14 +352,22 @@
 
 .student-portal__workspace-grid {
   display: grid;
-  grid-template-columns: 1fr 1.2fr 0.95fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  grid-column: 1 / span 2;
+}
+
+.student-portal__analyzer-layout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
 }
 
 .student-portal__panel {
   display: grid;
-  gap: 14px;
-  padding: 18px;
+  gap: 12px;
+  padding: 16px;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(130, 138, 180, 0.1);
@@ -431,11 +439,98 @@
 
 .student-portal__job-card {
   display: grid;
-  gap: 16px;
-  padding: 16px;
-  border-radius: 18px;
+  gap: 14px;
+}
+
+.student-portal__section-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+  color: #1f2333;
+}
+
+.student-portal__section-label h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.student-portal__section-label span {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: #6f35ff;
+  font-size: 0.92rem;
+}
+
+.student-portal__detail-card {
+  display: grid;
+  gap: 4px;
+  padding: 14px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(130, 138, 180, 0.14);
   background: #fff;
-  border: 1px solid rgba(130, 138, 180, 0.1);
+}
+
+.student-portal__job-card .student-portal__textarea--job {
+  min-height: 290px;
+}
+
+.student-portal__job-card .student-portal__job-section {
+  display: grid;
+  gap: 8px;
+}
+
+.student-portal__empty-panel {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  min-height: 130px;
+  padding: 18px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f7f6ff 0%, #f4f2ff 100%);
+  border: 1px solid rgba(111, 53, 255, 0.1);
+  text-align: center;
+  color: #57607b;
+}
+
+.student-portal__empty-panel--tight {
+  min-height: 96px;
+  align-items: start;
+  justify-items: start;
+  text-align: left;
+}
+
+.student-portal__empty-panel-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #6f35ff;
+  background: rgba(111, 53, 255, 0.08);
+  font-size: 1rem;
+}
+
+.student-portal__empty-panel strong {
+  color: #424961;
+  font-size: 0.98rem;
+}
+
+.student-portal__empty-panel p {
+  margin: 0;
+  max-width: 34ch;
+  line-height: 1.5;
+  font-size: 0.88rem;
+}
+
+.student-portal__empty-inline {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f4f2ff;
+  color: #6b7291;
+  font-size: 0.88rem;
 }
 
 .student-portal__job-topline {
@@ -511,7 +606,7 @@
 }
 
 .student-portal__textarea--job {
-  min-height: 255px;
+  min-height: 290px;
 }
 
 .student-portal__textarea--resume {
@@ -576,27 +671,36 @@
 }
 
 .student-portal__upload-tabs {
-  display: inline-flex;
-  width: fit-content;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  width: max-content;
+  align-self: start;
   padding: 4px;
-  border-radius: 14px;
+  border-radius: 16px;
   background: #f4f6fb;
   border: 1px solid rgba(130, 138, 180, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .student-portal__upload-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 40px;
-  padding: 0 18px;
-  border-radius: 11px;
+  padding: 0 16px;
+  border-radius: 12px;
   background: transparent;
   color: #5e6685;
   font-weight: 700;
+  white-space: nowrap;
+  flex: none;
 }
 
 .student-portal__upload-tab.is-active {
   background: #fff;
   color: #6f35ff;
-  box-shadow: 0 6px 12px rgba(27, 35, 72, 0.06);
+  box-shadow: 0 6px 14px rgba(27, 35, 72, 0.08);
 }
 
 .student-portal__upload-summary {
@@ -656,13 +760,13 @@
   display: grid;
   place-items: center;
   gap: 8px;
-  padding: 28px 16px;
+  padding: 26px 16px;
   border-radius: 18px;
   border: 1px dashed rgba(111, 53, 255, 0.22);
   background: linear-gradient(180deg, #fcfcff 0%, #f7f8fd 100%);
   color: #5a6381;
   text-align: center;
-  min-height: 160px;
+  min-height: 190px;
 }
 
 .student-portal__dropzone-icon {
@@ -683,6 +787,17 @@
 
 .student-portal__dropzone-copy {
   font-size: 0.9rem;
+}
+
+.student-portal__dropzone-button {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(111, 53, 255, 0.18);
+  background: #fff;
+  color: #6f35ff;
+  font-weight: 700;
+  box-shadow: 0 8px 14px rgba(27, 35, 72, 0.05);
 }
 
 .student-portal__success-callout {
@@ -909,14 +1024,15 @@
 
 .student-portal__stats-grid {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 0.95fr 1.1fr 0.95fr;
-  gap: 18px;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-content: start;
 }
 
 .student-portal__stat-card {
   display: grid;
   gap: 12px;
-  padding: 18px;
+  padding: 16px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(130, 138, 180, 0.1);
@@ -938,7 +1054,7 @@
 
 .student-portal__stat-copy strong {
   display: block;
-  color: #2c8f47;
+  color: #2f3550;
   margin-bottom: 4px;
   font-size: 1rem;
 }
@@ -1014,21 +1130,27 @@
 
 .student-portal__missing-head {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
 }
 
 .student-portal__missing-count {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #fff3db;
   color: #df9e1c;
-  font-size: 2.7rem;
-  line-height: 1;
+  font-size: 0.95rem;
   font-weight: 900;
 }
 
 .student-portal__missing-head p {
-  margin: 2px 0 0;
+  margin: 0;
   color: #556075;
   line-height: 1.45;
+  font-size: 0.9rem;
 }
 
 .student-portal__suggestion-list {
@@ -1324,12 +1446,18 @@
 }
 
 @media (max-width: 1400px) {
+  .student-portal__analyzer-layout {
+    grid-template-columns: 1fr;
+  }
+
   .student-portal__workspace-grid {
     grid-template-columns: 1fr;
+    grid-column: auto;
   }
 
   .student-portal__stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-column: auto;
   }
 
   .student-portal__cover-shell {
