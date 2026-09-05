@@ -9,6 +9,7 @@ class ResumeInput(BaseModel):
     resume_text: str = Field(..., min_length=1)
     job_description: str = ""
     target_role: str = ""
+    additional_context: str = ""
 
 
 class JobDescriptionInput(BaseModel):

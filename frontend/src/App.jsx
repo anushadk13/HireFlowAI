@@ -395,9 +395,15 @@ export default function App() {
   const [view, setView] = useState(getInitialView);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem("hireflow-auth-view", view);
+    }
+  }, [view]);
+
+  useEffect(() => {
     const handleRouteEvent = (event) => {
       const nextView = event.detail?.view;
-      if (nextView === "student" || nextView === "hr") {
+      if (nextView === "student" || nextView === "hr" || nextView === "login" || nextView === "home") {
         setView(nextView);
       }
     };
@@ -430,7 +436,7 @@ export default function App() {
   }
 
   if (view === "student") {
-    return <StudentPortal />;
+    return <StudentPortal onSignOut={() => setView("login")} />;
   }
 
   if (view === "hr") {

@@ -1,6 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import LiveCoverLetter from "./LiveCoverLetter.jsx";
 import StudentResumePreview from "./StudentResumePreview.jsx";
+import StudentSettings from "./StudentSettings.jsx";
+import ResumeLibrary from "./ResumeLibrary.jsx";
+import { auth } from "../firebase.js";
 import "./StudentPortal.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
@@ -31,9 +35,9 @@ Experience with APIs, analytics dashboards, and scalable workflows is preferred.
 Bachelor's degree or equivalent experience required.`;
 
 const SIDEBAR_ITEMS = [
-  { id: "analyzer", label: "Resume Analyzer", active: true },
-  { id: "preview", label: "100% Score Resume Preview" },
-  { id: "cover-letter", label: "Cover Letter" },
+  { id: "analyzer", label: "RESUME ANALYZER" },
+  { id: "resume", label: "RESUME" },
+  { id: "cover-letter", label: "COVER LETTER" },
 ];
 
 const DEFAULT_SKILLS = ["Python", "FastAPI", "LangChain", "React", "SQL", "Docker", "AWS", "APIs"];
@@ -45,6 +49,34 @@ const DEFAULT_IMPROVEMENTS = [
   "Show stronger system design evidence",
 ];
 
+const THEME_OPTIONS = [
+  { name: "Violet", value: "#6f35ff", rgb: "111, 53, 255" },
+  { name: "Blue", value: "#2563eb", rgb: "37, 99, 235" },
+  { name: "Green", value: "#059669", rgb: "5, 150, 105" },
+  { name: "Amber", value: "#d97706", rgb: "217, 119, 6" },
+  { name: "Rose", value: "#e11d48", rgb: "225, 29, 72" },
+];
+
+function getStoredValue(key, fallback = "") {
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+  return window.localStorage.getItem(key) || fallback;
+}
+
+function getInitialTheme() {
+  const stored = getStoredValue("hireflow-student-theme", "");
+  return THEME_OPTIONS.find((theme) => theme.value === stored) || THEME_OPTIONS[0];
+}
+
+function getStoredApiKey() {
+  return getStoredValue("hireflow-student-api-key", "");
+}
+
+function getStoredProfilePhoto() {
+  return getStoredValue("hireflow-student-profile-photo", "");
+}
+
 async function postJSON(path, body) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
@@ -55,6 +87,32 @@ async function postJSON(path, body) {
     throw new Error(`Request to ${path} failed with status ${res.status}`);
   }
   return res.json();
+}
+
+async function postFormData(path, formData) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody.detail || `Request to ${path} failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
+async function extractResumeFileText(file) {
+  const extension = file.name.split(".").pop()?.toLowerCase() || "";
+  const isPlainText = file.type.startsWith("text/") || ["txt", "md", "markdown"].includes(extension);
+
+  if (isPlainText) {
+    return file.text();
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  const result = await postFormData("/api/resume/extract-text", formData);
+  return result.text || "";
 }
 
 function pickArray(value) {
@@ -116,13 +174,24 @@ function ChipList({ items, tone = "purple" }) {
   );
 }
 
-export default function StudentPortal() {
+export default function StudentPortal({ onSignOut }) {
   const resumeInputRef = useRef(null);
+  const profilePhotoInputRef = useRef(null);
+  const profileMenuRef = useRef(null);
+  const profileMenuButtonRef = useRef(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState(getInitialTheme);
+  const [apiKeyDraft, setApiKeyDraft] = useState(getStoredApiKey);
+  const [profilePhoto, setProfilePhoto] = useState(getStoredProfilePhoto);
   const [resume, setResume] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [resumeMode, setResumeMode] = useState("upload");
   const [activeTemplate, setActiveTemplate] = useState("Professional");
   const [activeSection, setActiveSection] = useState("analyzer");
+  const [previewFromCta, setPreviewFromCta] = useState(false);
+  const [skillsDetailsOpen, setSkillsDetailsOpen] = useState(false);
+  const [missingSkillsOpen, setMissingSkillsOpen] = useState(false);
   const [resumeFileName, setResumeFileName] = useState("Nina_Carter_Resume.pdf");
   const [resumeFileSize, setResumeFileSize] = useState("234 KB");
   const [coverPersonalization, setCoverPersonalization] = useState(
@@ -131,13 +200,23 @@ export default function StudentPortal() {
 
   const [analysisResult, setAnalysisResult] = useState(null);
   const [matchResult, setMatchResult] = useState(null);
+  const [parsedJobDetails, setParsedJobDetails] = useState(null);
   const [coverLetter, setCoverLetter] = useState("");
+  const [uploadedResumes, setUploadedResumes] = useState([]);
 
   const [loading, setLoading] = useState(null);
   const [error, setError] = useState("");
 
   const summary = getResumeHeader(resume);
+  const profileName = currentUser?.displayName || currentUser?.email?.split("@")?.[0] || "Logged in user";
+  const profileInitials = profileName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
   const hasAnalysis = Boolean(analysisResult || matchResult);
+  const hasResumeText = Boolean(resume.trim());
   const score = hasAnalysis
     ? formatPercent(matchResult?.match_score ?? analysisResult?.resume_score ?? analysisResult?.ats_score ?? 88, 88)
     : 0;
@@ -145,6 +224,108 @@ export default function StudentPortal() {
   const experienceMatch = hasAnalysis ? formatPercent(analysisResult?.experience_score ?? 80, 80) : 0;
   const keywordsMatch = hasAnalysis ? formatPercent(analysisResult?.keywords_score ?? 85, 85) : 0;
   const formatMatch = hasAnalysis ? formatPercent(analysisResult?.formatting_score ?? 90, 90) : 0;
+  const portalStyle = {
+    "--student-accent": selectedTheme.value,
+    "--student-accent-rgb": selectedTheme.rgb,
+  };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user || null);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const handleClick = (event) => {
+      if (!profileMenuRef.current) {
+        return;
+      }
+
+      if (profileMenuRef.current.contains(event.target) || profileMenuButtonRef.current?.contains(event.target)) {
+        return;
+      }
+
+      setProfileMenuOpen(false);
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem("hireflow-student-theme", selectedTheme.value);
+  }, [selectedTheme]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem("hireflow-student-api-key", apiKeyDraft);
+  }, [apiKeyDraft]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (profilePhoto) {
+      window.localStorage.setItem("hireflow-student-profile-photo", profilePhoto);
+      return;
+    }
+
+    window.localStorage.removeItem("hireflow-student-profile-photo");
+  }, [profilePhoto]);
+
+  useEffect(() => {
+    const jobText = jobDescription.trim();
+    if (!jobText) {
+      setParsedJobDetails(null);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/hr/parse-jd`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_description: jobText }),
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          throw new Error(`Request to /api/hr/parse-jd failed with status ${res.status}`);
+        }
+        setParsedJobDetails(await res.json());
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          setParsedJobDetails(null);
+        }
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [jobDescription]);
 
   const matchedSkills = hasAnalysis
     ? pickArray(analysisResult?.matched_skills).length
@@ -153,6 +334,21 @@ export default function StudentPortal() {
         ? matchResult.skills_match
         : DEFAULT_SKILLS
     : [];
+
+  const jobSkills = pickArray(parsedJobDetails?.skills);
+  const jobResponsibilities = pickArray(parsedJobDetails?.responsibilities);
+  const roleSummaryPoints = Array.isArray(parsedJobDetails?.role_summary)
+    ? parsedJobDetails.role_summary.filter(Boolean)
+    : parsedJobDetails?.role_summary
+      ? [parsedJobDetails.role_summary]
+      : [];
+
+
+
+  const jobExperience = pickArray(parsedJobDetails?.experience).join(", ") || "N/A";
+  const jobSalary = parsedJobDetails?.salary || "N/A";
+  const jobType = parsedJobDetails?.employment_type || "N/A";
+  const hasParsedJobDetails = Boolean(parsedJobDetails);
 
   const missingSkills = hasAnalysis
     ? pickArray(analysisResult?.missing_skills).length
@@ -206,7 +402,10 @@ export default function StudentPortal() {
     if (!file) return;
 
     try {
-      const text = await file.text();
+      const text = await extractResumeFileText(file);
+      if (!text.trim()) {
+        throw new Error("No readable text was found in the uploaded resume.");
+      }
       setResume(text);
       setResumeMode("upload");
       setResumeFileName(file.name);
@@ -215,6 +414,17 @@ export default function StudentPortal() {
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  function handleReuploadResume() {
+    setResume("");
+    setResumeMode("upload");
+    setResumeFileName("");
+    setResumeFileSize("");
+    setAnalysisResult(null);
+    setMatchResult(null);
+    setCoverLetter("");
+    setError("");
   }
 
   function handleResetResume() {
@@ -240,6 +450,7 @@ export default function StudentPortal() {
       const result = await postJSON("/api/resume/cover-letter", {
         resume_text: resume,
         job_description: jobDescription,
+        additional_context: coverPersonalization,
       });
       setCoverLetter(result.cover_letter || "");
       setError("");
@@ -250,8 +461,86 @@ export default function StudentPortal() {
     }
   }
 
+  async function handleAddResumeToLibrary(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const text = await extractResumeFileText(file);
+      if (!text.trim()) {
+        throw new Error("No readable text was found in the uploaded resume.");
+      }
+
+      const newResume = {
+        id: Date.now().toString(),
+        name: file.name,
+        text: text,
+        size: formatFileSize(file.size),
+        uploadDate: new Date().toISOString(),
+      };
+
+      setUploadedResumes((prev) => [...prev, newResume]);
+      setError("");
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function handleDeleteResume(resumeId) {
+    setUploadedResumes((prev) => prev.filter((r) => r.id !== resumeId));
+  }
+
+  function handleSelectResumeFromLibrary(resumeId) {
+    const selectedResume = uploadedResumes.find((r) => r.id === resumeId);
+    if (selectedResume) {
+      setResume(selectedResume.text);
+      setResumeFileName(selectedResume.name);
+      setResumeFileSize(selectedResume.size);
+      setResumeMode("upload");
+    }
+  }
+
+  function handleSelectTheme(theme) {
+    setSelectedTheme(theme);
+  }
+
+  function handleSaveApiKey(event) {
+    event.preventDefault();
+    setApiKeyDraft(apiKeyDraft.trim());
+  }
+
+  function handleProfilePhotoUpload(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      setProfilePhoto(result);
+    };
+    reader.onerror = () => {
+      setError("Could not read the selected image.");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleSignOut() {
+    setProfileMenuOpen(false);
+    try {
+      await signOut(auth);
+      onSignOut?.();
+    } catch (err) {
+      setError(err?.message || "Could not sign out.");
+    }
+  }
+
   return (
-    <div className="student-portal">
+    <div className="student-portal" style={portalStyle}>
       <aside className="student-portal__sidebar">
         <div className="student-portal__brand">
           <div className="student-portal__brand-mark" aria-hidden="true">
@@ -261,7 +550,7 @@ export default function StudentPortal() {
           </div>
           <div>
             <div className="student-portal__brand-title">HireFlow AI</div>
-            <div className="student-portal__brand-subtitle">AI Resume &amp; Cover Letter Assistant</div>
+           
           </div>
         </div>
 
@@ -281,23 +570,115 @@ export default function StudentPortal() {
           ))}
         </nav>
 
+        <div className="student-portal__sidebar-footer" ref={profileMenuRef}>
+          <button
+            ref={profileMenuButtonRef}
+            className="student-portal__profile"
+            type="button"
+            aria-label={`Signed in as ${profileName}`}
+            aria-expanded={profileMenuOpen}
+            onClick={() => setProfileMenuOpen((value) => !value)}
+          >
+            <div className="student-portal__avatar" aria-hidden="true">
+              {profilePhoto ? <img src={profilePhoto} alt="" /> : profileInitials}
+            </div>
+            <span className="student-portal__profile-name">{profileName}</span>
+          </button>
+
+              {profileMenuOpen ? (
+                <div className="student-portal__profile-menu" role="menu" aria-label="Profile actions">
+              <button
+                className="student-portal__profile-menu-item"
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  setActiveSection("settings");
+                }}
+              >
+                Settings
+              </button>
+              <button className="student-portal__profile-menu-item" type="button" onClick={handleSignOut}>
+                Sign out
+              </button>
+            </div>
+          ) : null}
+        </div>
+
       </aside>
 
       <main className="student-portal__content">
         {error && <div className="student-portal__error">{error}</div>}
 
-        {activeSection === "preview" ? (
-          <StudentResumePreview summary={summary} matchedSkills={matchedSkills} score={score} />
+        {activeSection === "settings" ? (
+          <StudentSettings
+            accountInfo={[
+              { label: "Name", value: currentUser?.displayName || "Not available" },
+              { label: "Email", value: currentUser?.email || "Not available" },
+            ]}
+            currentUser={currentUser}
+            onBackToDashboard={() => setActiveSection("analyzer")}
+            onHandleProfilePhotoUpload={handleProfilePhotoUpload}
+            onRemoveProfilePhoto={() => setProfilePhoto("")}
+            onOpenProfilePhotoPicker={() => profilePhotoInputRef.current?.click()}
+            apiKeyDraft={apiKeyDraft}
+            onApiKeyChange={setApiKeyDraft}
+            onSaveApiKey={handleSaveApiKey}
+            profileInitials={profileInitials}
+            profilePhoto={profilePhoto}
+            profilePhotoInputRef={profilePhotoInputRef}
+            selectedTheme={selectedTheme}
+            themeOptions={THEME_OPTIONS}
+            onSelectTheme={handleSelectTheme}
+          />
+        ) : activeSection === "preview" ? (
+          <StudentResumePreview
+            fromCta={previewFromCta}
+            resume={resume}
+            resumeFileName={resumeFileName}
+            hasResumeText={hasResumeText}
+            summary={summary}
+            matchedSkills={matchedSkills}
+            score={score}
+            jobDescription={jobDescription}
+            jobExperience={jobExperience}
+            jobSalary={jobSalary}
+            jobType={jobType}
+            jobSkills={jobSkills}
+            hasParsedJobDetails={hasParsedJobDetails}
+            parsedJobDetails={parsedJobDetails}
+            roleSummaryPoints={roleSummaryPoints}
+            resumeMode={resumeMode}
+            setResumeMode={setResumeMode}
+            resumeInputRef={resumeInputRef}
+            handleResumeUpload={handleResumeUpload}
+            handleReuploadResume={handleReuploadResume}
+            handleNewAnalysis={handleNewAnalysis}
+            setResume={setResume}
+          />
+        ) : activeSection === "resume" ? (
+          <ResumeLibrary
+            uploadedResumes={uploadedResumes}
+            onAddResume={handleAddResumeToLibrary}
+            onDeleteResume={handleDeleteResume}
+            onSelectResume={handleSelectResumeFromLibrary}
+            onNavigateToAnalyzer={() => setActiveSection("analyzer")}
+          />
         ) : activeSection === "cover-letter" ? (
           <LiveCoverLetter
+            jobDescription={jobDescription}
+            setJobDescription={setJobDescription}
+            hasParsedJobDetails={hasParsedJobDetails}
+            parsedJobDetails={parsedJobDetails}
+            roleSummaryPoints={roleSummaryPoints}
+            resume={resume}
+            setResume={setResume}
+            resumeFileName={resumeFileName}
             coverLetter={coverLetter}
             loading={loading}
+            uploadedResumes={uploadedResumes}
+            onSelectResumeFromLibrary={handleSelectResumeFromLibrary}
             onBackToDashboard={() => setActiveSection("analyzer")}
             onGenerateCoverLetter={handleCoverLetter}
-            activeTemplate={activeTemplate}
-            setActiveTemplate={setActiveTemplate}
-            personalization={coverPersonalization}
-            setPersonalization={setCoverPersonalization}
           />
         ) : (
           <section className="student-portal__analyzer-layout">
@@ -308,7 +689,6 @@ export default function StudentPortal() {
                     <span>1</span>
                     <h2>Job Description</h2>
                   </div>
-                  <p className="student-portal__panel-subtitle">Paste the job description</p>
                 </div>
               </div>
 
@@ -327,33 +707,24 @@ export default function StudentPortal() {
               <div className="student-portal__job-meta">
                 <div className="student-portal__detail-card">
                   <span className="student-portal__meta-label">Experience</span>
-                  <strong>{hasAnalysis ? "2-4 Years" : "N/A"}</strong>
+                  <strong>{jobExperience}</strong>
                 </div>
                 <div className="student-portal__detail-card">
                   <span className="student-portal__meta-label">Salary</span>
-                  <strong>{hasAnalysis ? "$120K - $180K" : "N/A"}</strong>
+                  <strong>{jobSalary}</strong>
                 </div>
                 <div className="student-portal__detail-card">
                   <span className="student-portal__meta-label">Type</span>
-                  <strong>{hasAnalysis ? "Full-time" : "N/A"}</strong>
+                  <strong>{jobType}</strong>
                 </div>
               </div>
 
-              <div className="student-portal__job-section">
-                <h3>About the role</h3>
-                <div className="student-portal__empty-panel">
-                  <div className="student-portal__empty-panel-icon" aria-hidden="true">
-                    ◌
-                  </div>
-                  <strong>{hasAnalysis ? "Parsed job summary will appear here." : "Your pasted job description will appear here."}</strong>
-                  <p>We&apos;ll extract key details and requirements automatically.</p>
-                </div>
-              </div>
+              
 
               <div className="student-portal__job-section">
                 <h3>Key Skills Detected</h3>
-                {matchedSkills.length ? (
-                  <ChipList items={matchedSkills.slice(0, 8)} />
+                {jobSkills.length ? (
+                  <ChipList items={jobSkills.slice(0, 8)} />
                 ) : (
                   <div className="student-portal__empty-panel">
                     <div className="student-portal__empty-panel-icon" aria-hidden="true">
@@ -365,9 +736,34 @@ export default function StudentPortal() {
                 )}
               </div>
 
-              <button className="student-portal__text-link" type="button" onClick={handleNewAnalysis}>
-                Run analysis <span aria-hidden="true">→</span>
-              </button>
+              <div className="student-portal__job-section">
+                <h3>About the role</h3>
+                {hasParsedJobDetails ? (
+                  <div className="student-portal__parsed-panel">
+                    <strong>{parsedJobDetails.role_title || "Role details"}</strong>
+                    {roleSummaryPoints.length ? (
+                      <ul className="student-portal__parsed-list">
+                        {roleSummaryPoints.slice(0, 5).map((item, index) => (
+                          <li key={`${item}-${index}`}>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>Role summary was extracted from the job description.</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="student-portal__empty-panel">
+                    <div className="student-portal__empty-panel-icon" aria-hidden="true">
+                      ◌
+                    </div>
+                    <strong>Your pasted job description will appear here.</strong>
+                    <p>We&apos;ll extract key details and requirements automatically.</p>
+                  </div>
+                )}
+              </div>
+
             </article>
 
             <article className="student-portal__panel student-portal__panel--resume">
@@ -400,57 +796,77 @@ export default function StudentPortal() {
                 </button>
               </div>
 
-              {resumeMode === "upload" ? (
+              <input
+                ref={resumeInputRef}
+                className="student-portal__hidden-input"
+                type="file"
+                accept=".pdf,.docx,.txt,.md,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={handleResumeUpload}
+              />
+
+              {resumeMode === "upload" && !hasResumeText ? (
                 <div className="student-portal__upload-summary">
                   <div className="student-portal__dropzone" onClick={() => resumeInputRef.current?.click()} role="button" tabIndex={0}>
                     <div className="student-portal__dropzone-title">Drag &amp; drop your file here</div>
                     <div className="student-portal__dropzone-copy">or</div>
-                    <button className="student-portal__dropzone-button" type="button" onClick={() => resumeInputRef.current?.click()}>
+                    <button
+                      className="student-portal__dropzone-button"
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        resumeInputRef.current?.click();
+                      }}
+                    >
                       Choose File
                     </button>
                     <div className="student-portal__dropzone-copy">Supports PDF, DOCX, TXT and Markdown</div>
                   </div>
+                </div>
+              ) : null}
 
-                  <div className="student-portal__success-callout">
-                    <span className="student-portal__success-callout-icon">✓</span>
-                    <div>
-                      <strong>Resume parsed successfully</strong>
-                      <p>We extracted text and key information from your resume.</p>
-                    </div>
+              {resumeMode === "paste" || hasResumeText ? (
+                <div className={`student-portal__editor-card${resumeMode === "upload" && hasResumeText ? " student-portal__editor-card--expanded" : ""}`}>
+                  <div className="student-portal__editor-toolbar" aria-hidden="true">
+                    <span>↶</span>
+                    <span>↷</span>
+                    <span className="student-portal__toolbar-divider" />
+                    <span>Paragraph</span>
+                    <span className="student-portal__toolbar-divider" />
+                    <span>B</span>
+                    <span>I</span>
+                    <span>U</span>
+                    <span className="student-portal__toolbar-divider" />
+                    <span>≡</span>
+                    <span>☰</span>
+                    <span>🔗</span>
+                    <span>{"{}"}</span>
+                    <span>&lt;/&gt;</span>
+                  </div>
+
+                  <textarea
+                    className="student-portal__textarea student-portal__textarea--resume"
+                    value={resume}
+                    onChange={(e) => setResume(e.target.value)}
+                    aria-label="Resume editor"
+                    placeholder={`Your resume content will appear here...
+You can edit the text if needed.`}
+                  />
+
+                  <div className="student-portal__editor-footer">
+                    <span>{resume.length} / 10000 characters</span>
                   </div>
                 </div>
               ) : null}
 
-              <div className="student-portal__editor-card">
-                <div className="student-portal__editor-toolbar" aria-hidden="true">
-                  <span>↶</span>
-                  <span>↷</span>
-                  <span className="student-portal__toolbar-divider" />
-                  <span>Paragraph</span>
-                  <span className="student-portal__toolbar-divider" />
-                  <span>B</span>
-                  <span>I</span>
-                  <span>U</span>
-                  <span className="student-portal__toolbar-divider" />
-                  <span>≡</span>
-                  <span>☰</span>
-                  <span>🔗</span>
-                  <span>{"{}"}</span>
-                  <span>&lt;/&gt;</span>
-                </div>
-
-                <textarea
-                  className="student-portal__textarea student-portal__textarea--resume"
-                  value={resume}
-                  onChange={(e) => setResume(e.target.value)}
-                  aria-label="Resume editor"
-                  placeholder={`Your resume content will appear here...
-You can edit the text if needed.`}
-                />
-
-                <div className="student-portal__editor-footer">
-                  <span>{resume.length} / 10000 characters</span>
-                </div>
+              <div className="student-portal__resume-actions">
+                {resumeMode === "upload" && hasResumeText ? (
+                  <button className="student-portal__ghost-button" type="button" onClick={handleReuploadResume}>
+                    Re-upload
+                  </button>
+                ) : null}
+                <button className="student-portal__text-link student-portal__text-link--center" type="button" onClick={handleNewAnalysis}>
+                  Run analysis <span aria-hidden="true">→</span>
+                </button>
               </div>
             </article>
 
@@ -474,15 +890,7 @@ You can edit the text if needed.`}
                 </div>
               </article>
 
-              <article className="student-portal__stat-card">
-                <div className="student-portal__stat-label">SKILLS MATCH</div>
-                <div className="student-portal__big-number">{skillsMatch}%</div>
-                <StatBar value={skillsMatch} tone="green" />
-                <p className="student-portal__stat-note">{hasAnalysis ? "Great match! You have most of the required skills." : "No skills matched yet."}</p>
-                <button className="student-portal__text-link" type="button">
-                  View Details <span aria-hidden="true">→</span>
-                </button>
-              </article>
+
 
               <article className="student-portal__stat-card">
                 <div className="student-portal__stat-label">MISSING SKILLS</div>
@@ -495,9 +903,28 @@ You can edit the text if needed.`}
                 ) : (
                   <div className="student-portal__empty-inline">Enter job description to see missing skills</div>
                 )}
-                <button className="student-portal__text-link" type="button">
-                  View Suggestions <span aria-hidden="true">→</span>
+                <button
+                  className="student-portal__expand-button"
+                  type="button"
+                  aria-expanded={missingSkillsOpen}
+                  onClick={() => setMissingSkillsOpen((open) => !open)}
+                >
+                  View Suggestions <span className="student-portal__expand-icon" aria-hidden="true">⌄</span>
                 </button>
+                {missingSkillsOpen ? (
+                  <div className="student-portal__expand-panel">
+                    {missingSkills.length ? (
+                      missingSkills.map((skill) => (
+                        <div key={skill}>
+                          <span>{skill}</span>
+                          <strong>Consider adding</strong>
+                        </div>
+                      ))
+                    ) : (
+                      <span>Run an analysis to receive skill suggestions.</span>
+                    )}
+                  </div>
+                ) : null}
               </article>
 
               <article className="student-portal__stat-card">
@@ -517,6 +944,18 @@ You can edit the text if needed.`}
                   View Suggestions <span aria-hidden="true">→</span>
                 </button>
               </article>
+
+              <button
+                className="student-portal__ats-cta"
+                type="button"
+                onClick={() => { setPreviewFromCta(true); setActiveSection("preview"); }}
+              >
+                <span className="student-portal__ats-cta-icon" aria-hidden="true">🚀</span>
+                <span>
+                  <strong>Want to get a 95+ ATS score resume?</strong>
+                  <span>Click to view your optimized resume →</span>
+                </span>
+              </button>
             </section>
           </section>
         )}
