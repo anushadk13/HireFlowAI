@@ -9,32 +9,129 @@ from backend.services.text_utils import detect_skills, extract_keywords
 
 
 def parse_jd(job_description: str) -> dict[str, Any]:
+    cleaned = re.sub(r"\s+", " ", job_description).strip()
     skills = detect_skills(job_description)
     keywords = extract_keywords(job_description, 10)
     experience = []
     lower = job_description.lower()
-    if "years" in lower:
-        match = re.search(r"(\d+)\+?\s+years?", lower)
+    role_title = "Role not specified"
+    title_patterns = [
+        r"(?:job\s*title|position|role)\s*[:\-]\s*([^\n.]+)",
+        r"^([A-Z][A-Za-z0-9 /&+-]*(?:Engineer|Developer|Designer|Analyst|Scientist|Manager|Specialist|Consultant|Intern))\b",
+        r"\b(?:hiring|looking for|seeking)\s+(?:an?\s+)?([A-Za-z0-9 /&+-]*(?:Engineer|Developer|Designer|Analyst|Scientist|Manager|Specialist|Consultant|Intern))\b",
+    ]
+    for pattern in title_patterns:
+        match = re.search(pattern, job_description.strip(), re.IGNORECASE | re.MULTILINE)
         if match:
-            experience.append(f"{match.group(1)}+ years of experience")
+            role_title = match.group(1).strip(" -:,.")[:80]
+            break
+
+    experience_match = re.search(
+        r"(\d+)\s*(?:-|to)\s*(\d+)\+?\s+years?|(\d+)\+?\s+years?",
+        lower,
+    )
+    if experience_match:
+        if experience_match.group(1) and experience_match.group(2):
+            experience.append(f"{experience_match.group(1)}-{experience_match.group(2)} years")
+        else:
+            experience.append(f"{experience_match.group(3)}+ years")
     if "degree" in lower or "bachelor" in lower:
         experience.append("Bachelor's degree or equivalent")
-    responsibilities = []
-    for sentence in re.split(r"(?<=[.!?])\s+", job_description.strip()):
-        if any(word in sentence.lower() for word in ["build", "design", "maintain", "develop", "own", "implement"]):
-            responsibilities.append(sentence.strip())
-    if not responsibilities:
-        responsibilities = [
+
+    salary = "Not specified"
+    salary_match = re.search(
+        r"(?:\$|aud\s*|usd\s*)\s?\d{2,3}(?:,\d{3})?(?:k)?(?:\s*(?:-|to)\s*(?:\$|aud\s*|usd\s*)?\s?\d{2,3}(?:,\d{3})?(?:k)?)?",
+        job_description,
+        re.IGNORECASE,
+    )
+    if salary_match:
+        salary = salary_match.group(0).strip()
+
+    employment_type = "Not specified"
+    type_map = [
+        ("Full-time", ["full-time", "full time", "permanent"]),
+        ("Part-time", ["part-time", "part time"]),
+        ("Contract", ["contract", "contractor"]),
+        ("Internship", ["internship", "intern"]),
+        ("Casual", ["casual"]),
+    ]
+    for label, terms in type_map:
+        if any(term in lower for term in terms):
+            employment_type = label
+            break
+
+    location = "Not specified"
+    location_match = re.search(r"(?:location|based in)\s*[:\-]?\s*([A-Za-z ,/-]+)", job_description, re.IGNORECASE)
+    if location_match:
+        location = location_match.group(1).strip(" -:,.")[:80]
+    elif "remote" in lower:
+        location = "Remote"
+    elif "hybrid" in lower:
+        location = "Hybrid"
+
+    action_words = [
+        "build",
+        "design",
+        "maintain",
+        "develop",
+        "own",
+        "implement",
+        "collaborate",
+        "manage",
+        "deliver",
+        "create",
+        "work",
+        "lead",
+        "drive",
+        "solve",
+        "research",
+        "prototype",
+    ]
+
+    def clean_item(item: str) -> str:
+        cleaned = re.sub(r"\s+", " ", item or "").strip(" -*•\t\r\n").strip()
+        return cleaned
+
+    responsibility_candidates: list[str] = []
+    seen_chunks: set[str] = set()
+    for chunk in re.split(r"\n+|(?:^|\n)\s*(?:[-*•]|\d+\.)\s*|(?<=[.!?])\s+", job_description.strip()):
+        cleaned = clean_item(chunk)
+        if not cleaned:
+            continue
+        normalized = re.sub(r"\s+", " ", cleaned).lower()
+        if normalized in seen_chunks:
+            continue
+        seen_chunks.add(normalized)
+        lowered = cleaned.lower()
+        if any(word in lowered for word in action_words):
+            responsibility_candidates.append(cleaned)
+
+    if not responsibility_candidates:
+        responsibility_candidates = [
             "Own the end-to-end delivery of product features.",
             "Collaborate with cross-functional stakeholders.",
             "Write maintainable and testable code.",
         ]
+
+    responsibilities = [item for item in responsibility_candidates if item][:5]
+    role_summary = responsibilities[:5]
+    if not role_summary:
+        fallback_summary = cleaned[:180].strip()
+        if len(fallback_summary) > 180:
+            fallback_summary = f"{fallback_summary[:177].rstrip()}..."
+        role_summary = [fallback_summary]
+
     return {
+        "role_title": role_title,
+        "role_summary": role_summary,
+        "salary": salary,
+        "employment_type": employment_type,
+        "location": location,
         "skills": skills,
         "experience": experience or ["2+ years of relevant experience"],
         "degree": "Bachelor's degree preferred" if ("degree" in lower or "bachelor" in lower) else "Not specified",
         "keywords": keywords,
-        "responsibilities": responsibilities[:5],
+        "responsibilities": responsibilities,
     }
 
 

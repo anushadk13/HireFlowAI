@@ -1,12 +1,15 @@
 .student-portal {
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  display: block;
+  --student-accent: #6f35ff;
+  --student-accent-rgb: 111, 53, 255;
   background:
     radial-gradient(circle at top left, rgba(111, 53, 255, 0.06), transparent 22%),
     radial-gradient(circle at top right, rgba(94, 121, 255, 0.08), transparent 20%),
     linear-gradient(180deg, #f8f9fc 0%, #eef1f7 100%);
   color: #151b36;
+  font-size: 0.96rem;
+  overflow-x: hidden;
 }
 
 .student-portal button {
@@ -21,27 +24,32 @@
 }
 
 .student-portal__sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 200px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 26px 18px 22px;
+  gap: 16px;
+  padding: 18px 14px 16px;
   border-right: 1px solid rgba(130, 138, 180, 0.1);
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(16px);
+  overflow: hidden;
+  z-index: 10;
 }
 
 .student-portal__brand {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 
 .student-portal__brand-mark {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 14px;
+  border-radius: 12px;
   background: linear-gradient(135deg, #4f46e5, #6f35ff 50%, #8b5cf6);
   box-shadow: 0 10px 22px rgba(111, 53, 255, 0.18);
   position: relative;
@@ -78,7 +86,7 @@
 }
 
 .student-portal__brand-title {
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   font-weight: 800;
   letter-spacing: -0.04em;
 }
@@ -86,33 +94,39 @@
 .student-portal__brand-subtitle {
   margin-top: 2px;
   color: #646d89;
-  font-size: 0.86rem;
+  font-size: 0.78rem;
 }
 
 .student-portal__nav {
   display: grid;
-  gap: 8px;
-  padding-top: 2px;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.student-portal__sidebar-footer {
+  position: relative;
+  margin-top: auto;
+  padding-top: 4px;
 }
 
 .student-portal__nav-item {
-  display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-height: 42px;
-  padding: 0 14px;
-  border-radius: 12px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
   background: transparent;
   color: #4f5771;
-  text-align: left;
   font-weight: 600;
+  font-size: 0.92rem;
+  text-align : left;
 }
 
 .student-portal__nav-item.is-active {
-  background: linear-gradient(135deg, #5f4bff, #6f35ff);
+  background: linear-gradient(135deg, var(--student-accent), color-mix(in srgb, var(--student-accent) 72%, white));
   color: #fff;
-  box-shadow: 0 10px 20px rgba(111, 53, 255, 0.16);
+  box-shadow: 0 10px 20px rgba(var(--student-accent-rgb), 0.16);
 }
 
 .student-portal__nav-icon {
@@ -158,7 +172,7 @@
   margin: 8px 0 14px;
   color: #66708c;
   line-height: 1.5;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
 }
 
 .student-portal__promo-button,
@@ -170,10 +184,10 @@
   min-height: 42px;
   padding: 0 16px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #6553f5, #6f35ff);
+  background: linear-gradient(135deg, var(--student-accent), color-mix(in srgb, var(--student-accent) 72%, white));
   color: #fff;
   font-weight: 700;
-  box-shadow: 0 10px 18px rgba(111, 53, 255, 0.14);
+  box-shadow: 0 10px 18px rgba(var(--student-accent-rgb), 0.14);
 }
 
 .student-portal__credits-card {
@@ -183,11 +197,11 @@
 
 .student-portal__credits-value {
   color: #2a3250;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
 }
 
 .student-portal__credits-value strong {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   font-weight: 800;
 }
 
@@ -203,26 +217,27 @@
   width: 60%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(135deg, #6f35ff, #8a61ff);
+  background: linear-gradient(135deg, var(--student-accent), color-mix(in srgb, var(--student-accent) 70%, white));
 }
 
 .student-portal__credits-note {
   color: #67718c;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
 }
 
 .student-portal__content {
   min-width: 0;
-  padding: 20px;
+  margin-left: 200px;
+  padding: 14px;
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .student-portal__hero {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
+  gap: 12px;
   padding: 0;
 }
 
@@ -232,7 +247,7 @@
 
 .student-portal__hero-title {
   margin: 0;
-  font-size: clamp(1.35rem, 1.8vw, 1.85rem);
+  font-size: clamp(1.15rem, 1.5vw, 1.5rem);
   line-height: 1.08;
   letter-spacing: -0.04em;
 }
@@ -241,13 +256,13 @@
   max-width: 760px;
   margin: 6px 0 0;
   color: #5b647c;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
 }
 
 .student-portal__hero-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -255,14 +270,14 @@
 .student-portal__primary-pill {
   gap: 8px;
   background: #fff;
-  color: #6f35ff;
-  border: 1px solid rgba(111, 53, 255, 0.16);
+  color: var(--student-accent);
+  border: 1px solid rgba(var(--student-accent-rgb), 0.16);
   box-shadow: 0 8px 16px rgba(34, 42, 90, 0.06);
 }
 
 .student-portal__mode-switch {
   display: inline-flex;
-  padding: 4px;
+  padding: 3px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(130, 138, 180, 0.1);
@@ -270,8 +285,8 @@
 }
 
 .student-portal__mode-button {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
   background: transparent;
   color: #707996;
@@ -279,7 +294,7 @@
 
 .student-portal__mode-button.is-active {
   background: #fff;
-  color: #6f35ff;
+  color: var(--student-accent);
   box-shadow: 0 6px 12px rgba(27, 35, 72, 0.06);
 }
 
@@ -288,8 +303,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(130, 138, 180, 0.1);
@@ -306,7 +321,7 @@
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: #6f35ff;
+  background: var(--student-accent);
   color: #fff;
   font-size: 0.7rem;
   font-weight: 700;
@@ -316,35 +331,87 @@
 .student-portal__profile {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 10px 6px 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  height: 42px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 249, 255, 0.96));
   border: 1px solid rgba(130, 138, 180, 0.1);
-  box-shadow: 0 8px 14px rgba(27, 35, 72, 0.04);
+  box-shadow: 0 10px 20px rgba(27, 35, 72, 0.05);
   color: #232b47;
   font-weight: 700;
+  text-align: left;
 }
 
 .student-portal__avatar {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
-  border-radius: 999px;
+  flex: none;
+  border-radius: 10px;
   background: linear-gradient(135deg, #d8ceff, #c8b5ff);
   color: #5f39d2;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 800;
 }
 
+.student-portal__avatar img,
+.student-portal__photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .student-portal__profile-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.84rem;
   font-weight: 700;
 }
 
-.student-portal__error {
-  padding: 14px 16px;
+.student-portal__profile-menu {
+  position: absolute;
+  right: 10px;
+  bottom: 52px;
+  display: grid;
+  gap: 6px;
+  min-width: 136px;
+  padding: 8px;
   border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(130, 138, 180, 0.12);
+  box-shadow: 0 14px 28px rgba(27, 35, 72, 0.12);
+  z-index: 11;
+}
+
+.student-portal__profile-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: #f6f7fd;
+  color: #2a3250;
+  font-weight: 700;
+  font-size: 0.84rem;
+  text-align: left;
+}
+
+.student-portal__profile-menu-item:hover {
+  background: rgba(var(--student-accent-rgb), 0.1);
+  color: var(--student-accent);
+}
+
+.student-portal__error {
+  padding: 12px 14px;
+  border-radius: 12px;
   background: rgba(255, 79, 79, 0.08);
   border: 1px solid rgba(255, 79, 79, 0.16);
   color: #a62828;
@@ -353,32 +420,47 @@
 .student-portal__workspace-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
   grid-column: 1 / span 2;
 }
 
 .student-portal__analyzer-layout {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(280px, 0.9fr) minmax(360px, 1.2fr) minmax(280px, 0.9fr);
   gap: 16px;
   align-items: stretch;
+  width: 100%;
 }
 
 .student-portal__panel {
-  display: grid;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  gap: 10px;
   padding: 16px;
-  border-radius: 22px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(130, 138, 180, 0.1);
   box-shadow: 0 10px 24px rgba(27, 35, 72, 0.04);
+  margin-left: 0;
+}
+
+.student-portal__analyzer-layout > .student-portal__panel:first-child {
+  width: 100%;
+  justify-self: stretch;
+}
+
+.student-portal__analyzer-layout > .student-portal__panel:first-child .student-portal__panel-header {
+  width: 100%;
+  min-height: auto;
 }
 
 .student-portal__panel-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
 }
 
 .student-portal__panel-header--split {
@@ -389,24 +471,24 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #5149cc;
+  color: var(--student-accent);
 }
 
 .student-portal__panel-step span {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: #5f4bff;
+  background: var(--student-accent);
   color: #fff;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 800;
 }
 
 .student-portal__panel-step h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.92rem;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -414,7 +496,7 @@
 .student-portal__panel-subtitle {
   margin: 4px 0 0;
   color: #6b7291;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
 }
 
 .student-portal__panel-actions {
@@ -424,13 +506,14 @@
 }
 
 .student-portal__ghost-button {
-  min-height: 42px;
-  padding: 0 16px;
-  border-radius: 12px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
   background: #fff;
   color: #4c46d9;
   border: 1px solid rgba(111, 53, 255, 0.14);
   font-weight: 700;
+  font-size: 0.84rem;
 }
 
 .student-portal__hidden-input {
@@ -439,42 +522,42 @@
 
 .student-portal__job-card {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .student-portal__section-label {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 2px;
+  margin-top: 0;
   color: #1f2333;
 }
 
 .student-portal__section-label h3 {
   margin: 0;
-  font-size: 0.98rem;
+  font-size: 0.9rem;
 }
 
 .student-portal__section-label span {
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
-  color: #6f35ff;
-  font-size: 0.92rem;
+  width: 18px;
+  height: 18px;
+  color: var(--student-accent);
+  font-size: 0.84rem;
 }
 
 .student-portal__detail-card {
   display: grid;
-  gap: 4px;
-  padding: 14px 12px;
-  border-radius: 14px;
+  gap: 2px;
+  padding: 10px 10px;
+  border-radius: 12px;
   border: 1px solid rgba(130, 138, 180, 0.14);
   background: #fff;
 }
 
 .student-portal__job-card .student-portal__textarea--job {
-  min-height: 290px;
+  min-height: 190px;
 }
 
 .student-portal__job-card .student-portal__job-section {
@@ -485,18 +568,18 @@
 .student-portal__empty-panel {
   display: grid;
   place-items: center;
-  gap: 8px;
-  min-height: 130px;
-  padding: 18px;
-  border-radius: 18px;
+  gap: 6px;
+  min-height: 100px;
+  padding: 14px;
+  border-radius: 14px;
   background: linear-gradient(180deg, #f7f6ff 0%, #f4f2ff 100%);
-  border: 1px solid rgba(111, 53, 255, 0.1);
+  border: 1px solid rgba(var(--student-accent-rgb), 0.1);
   text-align: center;
   color: #57607b;
 }
 
 .student-portal__empty-panel--tight {
-  min-height: 96px;
+  min-height: 84px;
   align-items: start;
   justify-items: start;
   text-align: left;
@@ -505,32 +588,66 @@
 .student-portal__empty-panel-icon {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   color: #6f35ff;
-  background: rgba(111, 53, 255, 0.08);
-  font-size: 1rem;
+  background: rgba(var(--student-accent-rgb), 0.08);
+  color: var(--student-accent);
+  font-size: 0.88rem;
 }
 
 .student-portal__empty-panel strong {
   color: #424961;
-  font-size: 0.98rem;
+  font-size: 0.9rem;
 }
 
 .student-portal__empty-panel p {
   margin: 0;
   max-width: 34ch;
   line-height: 1.5;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
+}
+
+.student-portal__parsed-panel {
+  display: grid;
+  gap: 8px;
+  min-height: 100px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(var(--student-accent-rgb), 0.12);
+  color: #424961;
+}
+
+.student-portal__parsed-panel strong {
+  color: #252b3d;
+  font-size: 0.9rem;
+}
+
+.student-portal__parsed-panel p {
+  margin: 0;
+  color: #57607b;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.student-portal__parsed-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: #57607b;
+  font-size: 0.8rem;
+  line-height: 1.45;
 }
 
 .student-portal__empty-inline {
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: #f4f2ff;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(var(--student-accent-rgb), 0.08);
   color: #6b7291;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
 }
 
 .student-portal__job-topline {
@@ -543,40 +660,40 @@
 }
 
 .student-portal__company-mark {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 14px;
+  border-radius: 12px;
   background: linear-gradient(135deg, #fafbfe, #eef2ff);
   color: #4285f4;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 800;
 }
 
 .student-portal__job-company strong {
   display: block;
-  font-size: 1rem;
+  font-size: 0.92rem;
 }
 
 .student-portal__job-company div {
   color: #6f7694;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
 }
 
 .student-portal__job-tag {
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: 999px;
   background: #eee9ff;
-  color: #5d43d6;
-  font-size: 0.8rem;
+  color: var(--student-accent);
+  font-size: 0.74rem;
   font-weight: 700;
 }
 
 .student-portal__job-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .student-portal__job-meta > div {
@@ -586,42 +703,43 @@
 
 .student-portal__meta-label {
   color: #6c7390;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
 }
 
 .student-portal__job-section h3 {
-  margin: 0 0 8px;
-  font-size: 0.93rem;
+  margin: 0 0 6px;
+  font-size: 0.86rem;
 }
 
 .student-portal__textarea {
   width: 100%;
   resize: none;
-  border: 1px solid rgba(130, 138, 180, 0.18);
-  border-radius: 14px;
+  border: 1px solid rgba(var(--student-accent-rgb), 0.18);
+  border-radius: 12px;
   background: #fff;
-  padding: 14px;
+  padding: 12px;
   outline: none;
-  line-height: 1.7;
+  line-height: 1.55;
 }
 
 .student-portal__textarea--job {
-  min-height: 290px;
+  min-height: 190px;
+  flex: 1;
 }
 
 .student-portal__textarea--resume {
-  min-height: 270px;
+  min-height: 210px;
   border: 0;
   padding: 0;
   background: transparent;
-  line-height: 1.75;
+  line-height: 1.6;
 }
 
 .student-portal__counter {
-  margin-top: 10px;
+  margin-top: 8px;
   text-align: right;
   color: #74809d;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
 }
 
 .student-portal__text-link {
@@ -631,29 +749,101 @@
   gap: 8px;
   padding: 0;
   background: transparent;
-  color: #4c46d9;
+  color: var(--student-accent);
   font-weight: 700;
+}
+
+.student-portal__text-link--center {
+  justify-self: center;
+  align-self: start;
+  width: max-content;
+  max-width: 100%;
+  min-height: 40px;
+  padding: 0 22px;
+  border-radius: 10px;
+  background: var(--student-accent);
+  color: #fff;
+  box-shadow: 0 8px 16px rgba(var(--student-accent-rgb), 0.2);
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.student-portal__text-link--center:hover {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(var(--student-accent-rgb), 0.26);
+}
+
+.student-portal__resume-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.student-portal__expand-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 0 0;
+  border-top: 1px solid rgba(130, 138, 180, 0.12);
+  background: transparent;
+  color: var(--student-accent);
+  font-weight: 700;
+  text-align: left;
+}
+
+.student-portal__expand-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
+
+.student-portal__expand-button[aria-expanded="true"] .student-portal__expand-icon {
+  transform: rotate(180deg);
+}
+
+.student-portal__expand-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(var(--student-accent-rgb), 0.06);
+  color: #59617c;
+  font-size: 0.8rem;
+}
+
+.student-portal__expand-panel div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.student-portal__expand-panel strong {
+  color: var(--student-accent);
 }
 
 .student-portal__chip-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .student-portal__chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border-radius: 999px;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 
 .student-portal__chip--purple {
   background: #efeaff;
-  color: #5d43d6;
+  color: var(--student-accent);
 }
 
 .student-portal__chip--green {
@@ -668,6 +858,11 @@
 
 .student-portal__panel--resume {
   min-width: 0;
+  height: 100%;
+  width: 100%;
+  justify-self: stretch;
+  display: flex;
+  flex-direction: column;
 }
 
 .student-portal__upload-tabs {
@@ -676,8 +871,8 @@
   grid-auto-columns: max-content;
   width: max-content;
   align-self: start;
-  padding: 4px;
-  border-radius: 16px;
+  padding: 3px;
+  border-radius: 14px;
   background: #f4f6fb;
   border: 1px solid rgba(130, 138, 180, 0.1);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -687,25 +882,28 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
-  padding: 0 16px;
-  border-radius: 12px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
   background: transparent;
   color: #5e6685;
   font-weight: 700;
+  font-size: 0.84rem;
   white-space: nowrap;
   flex: none;
 }
 
 .student-portal__upload-tab.is-active {
   background: #fff;
-  color: #6f35ff;
+  color: var(--student-accent);
   box-shadow: 0 6px 14px rgba(27, 35, 72, 0.08);
 }
 
 .student-portal__upload-summary {
-  display: grid;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 10px;
 }
 
 .student-portal__file-card {
@@ -713,8 +911,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px;
-  border-radius: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
   border: 1px solid rgba(130, 138, 180, 0.14);
   background: #fff;
 }
@@ -726,15 +924,15 @@
 }
 
 .student-portal__file-icon {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fff1f0;
   color: #e53935;
   border: 1px solid rgba(229, 57, 53, 0.18);
-  font-size: 0.86rem;
+  font-size: 0.76rem;
   font-weight: 800;
 }
 
@@ -745,7 +943,7 @@
 
 .student-portal__file-pill span {
   color: #6f7694;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
 }
 
 .student-portal__success-dot {
@@ -759,25 +957,28 @@
 .student-portal__dropzone {
   display: grid;
   place-items: center;
-  gap: 8px;
-  padding: 26px 16px;
-  border-radius: 18px;
-  border: 1px dashed rgba(111, 53, 255, 0.22);
+  align-content: center;
+  flex: 1;
+  gap: 6px;
+  height: 100%;
+  padding: 18px 14px;
+  border-radius: 14px;
+  border: 1px dashed rgba(var(--student-accent-rgb), 0.22);
   background: linear-gradient(180deg, #fcfcff 0%, #f7f8fd 100%);
   color: #5a6381;
   text-align: center;
-  min-height: 190px;
+  min-height: 280px;
 }
 
 .student-portal__dropzone-icon {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 14px;
-  background: rgba(111, 53, 255, 0.1);
-  color: #6f35ff;
-  font-size: 1.3rem;
+  border-radius: 12px;
+  background: rgba(var(--student-accent-rgb), 0.1);
+  color: var(--student-accent);
+  font-size: 1.1rem;
 }
 
 .student-portal__dropzone-title {
@@ -786,17 +987,18 @@
 }
 
 .student-portal__dropzone-copy {
-  font-size: 0.9rem;
+  font-size: 0.82rem;
 }
 
 .student-portal__dropzone-button {
-  min-height: 40px;
-  padding: 0 18px;
-  border-radius: 12px;
-  border: 1px solid rgba(111, 53, 255, 0.18);
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--student-accent-rgb), 0.18);
   background: #fff;
-  color: #6f35ff;
+  color: var(--student-accent);
   font-weight: 700;
+  font-size: 0.84rem;
   box-shadow: 0 8px 14px rgba(27, 35, 72, 0.05);
 }
 
@@ -804,21 +1006,21 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 14px 16px;
-  border-radius: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
   background: #f3faf4;
-  border: 1px solid rgba(40, 167, 69, 0.12);
+  border: 1px solid rgba(var(--student-accent-rgb), 0.12);
 }
 
 .student-portal__success-callout-icon {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: #28a745;
   color: #fff;
-  font-size: 0.86rem;
+  font-size: 0.76rem;
   flex: none;
 }
 
@@ -829,26 +1031,30 @@
 .student-portal__success-callout p {
   margin: 4px 0 0;
   color: #55745d;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   line-height: 1.45;
 }
 
 .student-portal__editor-card {
-  border-radius: 18px;
+  border-radius: 14px;
   border: 1px solid rgba(130, 138, 180, 0.1);
   background: #fff;
   overflow: hidden;
 }
 
+.student-portal__editor-card--expanded .student-portal__textarea--resume {
+  min-height: 750px;
+}
+
 .student-portal__editor-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 52px;
-  padding: 0 14px;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 12px;
   color: #4a516d;
   background: #fff;
-  border-bottom: 1px solid rgba(130, 138, 180, 0.1);
+  border-bottom: 1px solid rgba(var(--student-accent-rgb), 0.08);
 }
 
 .student-portal__toolbar-divider {
@@ -858,8 +1064,8 @@
 }
 
 .student-portal__textarea--resume {
-  min-height: 292px;
-  padding: 18px 18px 0;
+  min-height: 220px;
+  padding: 14px 14px 0;
 }
 
 .student-portal__editor-footer {
@@ -867,9 +1073,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 18px 16px;
+  padding: 0 14px 12px;
   color: #73809c;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
 }
 
 .student-portal__saved {
@@ -883,6 +1089,33 @@
   border: 1px solid rgba(130, 138, 180, 0.1);
   background: #fff;
   min-height: 520px;
+  margin-left:20px;
+}
+
+/* ── Compare layout (CTA mode: uploaded + generated side-by-side) ── */
+.student-portal__preview-compare-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.student-portal__uploaded-resume-body {
+  flex: 1;
+  overflow-y: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(130, 138, 180, 0.12);
+  background: #fafbff;
+  padding: 16px;
+}
+
+.student-portal__uploaded-resume-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.84rem;
+  line-height: 1.7;
+  color: #394154;
 }
 
 .student-portal__preview-title {
@@ -1023,20 +1256,71 @@
 }
 
 .student-portal__stats-grid {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  justify-self: stretch;
   gap: 16px;
-  align-content: start;
+  min-width: 0;
 }
 
 .student-portal__stat-card {
   display: grid;
+  width: var(--student-stat-card-width, 100%);
   gap: 12px;
   padding: 16px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(130, 138, 180, 0.1);
   box-shadow: 0 10px 22px rgba(27, 35, 72, 0.04);
+}
+
+.student-portal__ats-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(var(--student-accent-rgb), 0.08) 0%, rgba(var(--student-accent-rgb), 0.16) 100%);
+  border: 1.5px solid rgba(var(--student-accent-rgb), 0.28);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.student-portal__ats-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(var(--student-accent-rgb), 0.18);
+  background: linear-gradient(135deg, rgba(var(--student-accent-rgb), 0.12) 0%, rgba(var(--student-accent-rgb), 0.22) 100%);
+}
+
+.student-portal__ats-cta-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.student-portal__ats-cta > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.student-portal__ats-cta strong {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--student-accent);
+  letter-spacing: -0.01em;
+}
+
+.student-portal__ats-cta > span:last-child > span {
+  font-size: 0.78rem;
+  color: #6b7291;
+  font-weight: 500;
 }
 
 .student-portal__stat-label {
@@ -1103,7 +1387,7 @@
 }
 
 .student-portal__statbar-fill--purple {
-  background: linear-gradient(135deg, #6553f5, #8b6bff);
+  background: linear-gradient(135deg, var(--student-accent), color-mix(in srgb, var(--student-accent) 68%, white));
 }
 
 .student-portal__statbar-fill--green {
@@ -1176,7 +1460,7 @@
   display: flex;
   justify-content: center;
   gap: 4px;
-  color: #6f35ff;
+  color: var(--student-accent);
   font-size: 1.15rem;
 }
 
@@ -1186,7 +1470,7 @@
   padding: 18px;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(130, 138, 180, 0.1);
+  border: 1px solid rgba(var(--student-accent-rgb), 0.1);
   box-shadow: 0 10px 24px rgba(27, 35, 72, 0.04);
 }
 
@@ -1203,7 +1487,7 @@
 }
 
 .student-portal__template-list-label {
-  color: #5149cc;
+  color: var(--student-accent);
   font-size: 0.76rem;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -1253,14 +1537,14 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(111, 53, 255, 0.08), rgba(95, 75, 255, 0));
+  background: linear-gradient(135deg, rgba(var(--student-accent-rgb), 0.08), rgba(var(--student-accent-rgb), 0));
   opacity: 0;
   transition: opacity 180ms ease;
 }
 
 .student-portal__template-button:hover {
   transform: translateY(-3px);
-  border-color: rgba(111, 53, 255, 0.2);
+  border-color: rgba(var(--student-accent-rgb), 0.2);
   box-shadow: 0 14px 24px rgba(27, 35, 72, 0.08);
 }
 
@@ -1269,9 +1553,9 @@
 }
 
 .student-portal__template-button.is-active {
-  border-color: rgba(111, 53, 255, 0.32);
+  border-color: rgba(var(--student-accent-rgb), 0.32);
   background: linear-gradient(180deg, #ffffff 0%, #fbfaff 100%);
-  box-shadow: 0 14px 26px rgba(111, 53, 255, 0.12);
+  box-shadow: 0 14px 26px rgba(var(--student-accent-rgb), 0.12);
   transform: translateY(-4px);
 }
 
@@ -1306,7 +1590,7 @@
   padding: 18px;
   border-radius: 18px;
   background: #fff;
-  border: 1px solid rgba(130, 138, 180, 0.1);
+  border: 1px solid rgba(var(--student-accent-rgb), 0.1);
 }
 
 .student-portal__selected-template {
@@ -1317,7 +1601,7 @@
   padding: 12px 14px;
   border-radius: 14px;
   background: #f7f8ff;
-  border: 1px solid rgba(111, 53, 255, 0.12);
+  border: 1px solid rgba(var(--student-accent-rgb), 0.12);
 }
 
 .student-portal__selected-template span {
@@ -1397,7 +1681,7 @@
 
 .student-portal__cover-page-kicker {
   margin-bottom: 8px;
-  color: #5149cc;
+  color: var(--student-accent);
   font-size: 0.78rem;
   font-weight: 900;
   letter-spacing: 0.1em;
@@ -1422,8 +1706,250 @@
   justify-self: end;
   padding: 0;
   background: transparent;
-  color: #5149cc;
+  color: var(--student-accent);
   font-weight: 700;
+}
+
+.student-portal__settings {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.student-portal__settings-shell {
+  width: min(100%, 1120px);
+  display: grid;
+  gap: 14px;
+}
+
+.student-portal__settings-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0 2px;
+}
+
+.student-portal__settings-kicker {
+  margin: 0 0 6px;
+  color: var(--student-accent);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.student-portal__settings-header h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  letter-spacing: -0.04em;
+}
+
+.student-portal__settings-header p {
+  max-width: 680px;
+  margin: 6px 0 0;
+  color: #5b647c;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.student-portal__settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  width: 100%;
+}
+
+.student-portal__settings-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(var(--student-accent-rgb), 0.1);
+  box-shadow: 0 12px 28px rgba(27, 35, 72, 0.04);
+}
+
+.student-portal__settings-card h2 {
+  margin: 0;
+  font-size: 0.96rem;
+}
+
+.student-portal__settings-note {
+  margin: 0;
+  color: #66708c;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.student-portal__settings-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.student-portal__settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f8f9fe;
+  border: 1px solid rgba(var(--student-accent-rgb), 0.08);
+}
+
+.student-portal__settings-row-left,
+.student-portal__settings-row-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.student-portal__settings-row-left {
+  min-width: 0;
+}
+
+.student-portal__settings-row-right {
+  justify-content: flex-end;
+}
+
+.student-portal__settings-row span {
+  color: #6c7390;
+  font-size: 0.8rem;
+}
+
+.student-portal__settings-row strong {
+  text-align: right;
+  font-size: 0.85rem;
+  color: #20253a;
+}
+
+.student-portal__settings-row-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(var(--student-accent-rgb), 0.08);
+  font-size: 0.9rem;
+  flex: none;
+}
+
+.student-portal__settings-row-action {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(var(--student-accent-rgb), 0.12);
+  color: #6c7390;
+  flex: none;
+}
+
+.student-portal__photo-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.student-portal__photo-preview {
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(var(--student-accent-rgb), 0.14), rgba(var(--student-accent-rgb), 0.28));
+  color: var(--student-accent);
+  font-size: 2rem;
+  font-weight: 900;
+  flex: none;
+}
+
+.student-portal__photo-preview span {
+  line-height: 1;
+}
+
+.student-portal__photo-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.student-portal__settings-hint {
+  grid-column: 2;
+  margin: -6px 0 0;
+  color: #7a8099;
+  font-size: 0.78rem;
+}
+
+.student-portal__theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.student-portal__theme-chip {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  background: #f6f7fb;
+  border: 1px solid rgba(130, 138, 180, 0.12);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #41506b;
+}
+
+.student-portal__theme-chip.is-active {
+  border-color: rgba(var(--student-accent-rgb), 0.34);
+  box-shadow: 0 10px 20px rgba(var(--student-accent-rgb), 0.12);
+  color: var(--student-accent);
+  background: rgba(var(--student-accent-rgb), 0.06);
+}
+
+.student-portal__theme-chip-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+.student-portal__api-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.student-portal__api-form .student-portal__primary-pill {
+  width: fit-content;
+  justify-self: center;
+  min-width: 160px;
+}
+
+.student-portal__api-field {
+  display: grid;
+  gap: 6px;
+}
+
+.student-portal__api-field span {
+  color: #6c7390;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.student-portal__api-field input {
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--student-accent-rgb), 0.16);
+  background: #fff;
 }
 
 .student-portal__download-button:disabled,
@@ -1445,9 +1971,13 @@
   }
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 900px) {
   .student-portal__analyzer-layout {
     grid-template-columns: 1fr;
+  }
+
+  .student-portal__analyzer-layout > .student-portal__panel:first-child {
+    width: 100%;
   }
 
   .student-portal__workspace-grid {
@@ -1467,12 +1997,19 @@
 
 @media (max-width: 1120px) {
   .student-portal {
-    grid-template-columns: 1fr;
+    display: block;
   }
 
   .student-portal__sidebar {
+    position: relative;
+    inset: auto;
+    width: auto;
     border-right: 0;
     border-bottom: 1px solid rgba(130, 138, 180, 0.12);
+  }
+
+  .student-portal__content {
+    margin-left: 0;
   }
 
   .student-portal__promo-card {
@@ -1486,15 +2023,20 @@
   .student-portal__hero-actions {
     justify-content: flex-start;
   }
+
+  .student-portal__settings-shell {
+    width: min(100%, 980px);
+  }
 }
 
 @media (max-width: 800px) {
   .student-portal__content {
-    padding: 18px;
+    padding: 12px;
   }
 
   .student-portal__stats-grid {
     grid-template-columns: 1fr;
+    grid-column: auto;
   }
 
   .student-portal__job-meta {
@@ -1521,7 +2063,7 @@
 
   .student-portal__profile {
     width: 100%;
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .student-portal__cover-page-head .student-portal__ghost-button {
@@ -1551,6 +2093,35 @@
 
   .student-portal__template-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .student-portal__settings-header {
+    flex-direction: column;
+  }
+
+  .student-portal__settings-grid {
+    gap: 12px;
+  }
+
+  .student-portal__settings-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .student-portal__photo-row {
+    grid-template-columns: 1fr;
+  }
+
+  .student-portal__settings-hint {
+    grid-column: auto;
+  }
+
+  .student-portal__theme-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .student-portal__api-form .student-portal__primary-pill {
+    width: 100%;
   }
 }
 
@@ -1606,12 +2177,13 @@
   font-size: 1.1rem;
 }
 
-/* ── Two-column layout ────────────────────────── */
+/* ── Two-column cover letter layout ────────────────── */
 .student-portal__cover-layout {
   display: grid;
-  grid-template-columns: 1fr 420px;
-  gap: 24px;
-  align-items: start;
+  grid-template-columns: minmax(320px, 1fr) minmax(380px, 1.2fr);
+  gap: 20px;
+  align-items: stretch;
+  width: 100%;
 }
 
 .student-portal__cover-main {

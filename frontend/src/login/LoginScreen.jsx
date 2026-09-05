@@ -3,7 +3,7 @@ import { onAuthStateChanged, signInWithPopup, signInWithRedirect } from "firebas
 
 import { auth, googleProvider } from "../firebase.js";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 const STUDENT_PREVIEW_SRC = import.meta.env.VITE_STUDENT_LOGO_SRC || "/images/student.png";
 
 function GoogleIcon() {
@@ -144,35 +144,25 @@ export default function LoginScreen({ onBack, onSelectStudent, onSelectHr, LogoM
     setStatusMessage("");
 
     try {
-      const isLocalHost = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
-      if (isLocalHost) {
-        await signInWithRedirect(auth, googleProvider);
-        return;
-      }
-
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      const code = error?.code || "";
-      if (code === "auth/unauthorized-domain") {
-        setHasPendingGoogleLookup(false);
-        setLoadingAction("");
-        return;
-      }
-
-      if (code === "auth/popup-blocked" || code === "auth/popup-closed-by-user") {
-        try {
+      let user = null;
+      try {
+        const result = await signInWithPopup(auth, googleProvider);
+        user = result?.user;
+      } catch (popupErr) {
+        if (popupErr?.code === "auth/popup-blocked" || popupErr?.code === "auth/popup-closed-by-user") {
           await signInWithRedirect(auth, googleProvider);
-        } catch (redirectError) {
-          setHasPendingGoogleLookup(false);
-          setErrorMessage(redirectError?.message || "Google sign-in failed.");
-          setLoadingAction("");
+          return;
         }
-        return;
+        throw popupErr;
       }
 
+      if (user) {
+        await resolveAccount(user);
+      }
+    } catch (error) {
       setHasPendingGoogleLookup(false);
-      setErrorMessage(error?.message || "Google sign-in failed.");
       setLoadingAction("");
+      setErrorMessage(error?.message || "Google sign-in failed.");
     }
   }
 
@@ -255,16 +245,13 @@ export default function LoginScreen({ onBack, onSelectStudent, onSelectHr, LogoM
   }, []);
 
   useEffect(() => {
-    if (!currentUser?.email || !hasPendingGoogleLookup) {
+    if (!currentUser?.email) {
       return;
     }
 
-    if (mode === "signin") {
+    if (mode === "signin" || hasPendingGoogleLookup) {
       void resolveAccount(currentUser);
-      return;
     }
-
-    // setStatusMessage("Google account connected. Choose Student or HR to finish setup.");
   }, [currentUser, mode, hasPendingGoogleLookup]);
 
   return (

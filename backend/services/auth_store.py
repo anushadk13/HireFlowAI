@@ -116,14 +116,17 @@ class AuthStore:
         except Exception:
             return
 
-        client = CosmosClient(endpoint, credential=key)
-        database = client.create_database_if_not_exists(id=database_name)
-        self._container = database.create_container_if_not_exists(
-            id=container_name,
-            partition_key=PartitionKey(path=partition_key_path),
-            offer_throughput=400,
-        )
-        self._mode = "cosmos"
+        try:
+            client = CosmosClient(endpoint, credential=key)
+            database = client.create_database_if_not_exists(id=database_name)
+            self._container = database.create_container_if_not_exists(
+                id=container_name,
+                partition_key=PartitionKey(path=partition_key_path),
+                offer_throughput=400,
+            )
+            self._mode = "cosmos"
+        except Exception:
+            self._container = None
 
     def _partition_value(self, email: str, payload: dict[str, Any] | None = None) -> str:
         if payload is not None:

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from backend.schemas import CareerQuestionInput, ResumeInput
+from backend.services.document_extract import extract_document_text
 from backend.services.resume import (
     ats_score,
     build_improvement_bundle,
@@ -15,6 +16,22 @@ from backend.services.resume import (
 )
 
 router = APIRouter()
+
+
+@router.post("/api/resume/extract-text")
+async def api_resume_extract_text(file: UploadFile = File(...)) -> dict[str, str]:
+    content = await file.read()
+    try:
+        text = extract_document_text(file.filename or "", content, file.content_type or "")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    if not text:
+        raise HTTPException(status_code=400, detail="No readable text was found in the uploaded resume.")
+
+    return {"text": text}
 
 
 @router.post("/api/resume/analyze")
@@ -45,7 +62,7 @@ def api_resume_improve(payload: ResumeInput) -> dict[str, Any]:
 
 @router.post("/api/resume/cover-letter")
 def api_cover_letter(payload: ResumeInput) -> dict[str, str]:
-    return {"cover_letter": generate_cover_letter(payload.resume_text, payload.job_description)}
+    return {"cover_letter": generate_cover_letter(payload.resume_text, payload.job_description, payload.additional_context)}
 
 
 @router.post("/api/resume/interview-prep")
@@ -62,4 +79,3 @@ def api_career_advisor(payload: CareerQuestionInput) -> dict[str, str]:
 def api_resume_versions(resume_text: str = "") -> dict[str, Any]:
     roles = ["Data Scientist", "Frontend Engineer", "AI Engineer", "Backend Engineer"]
     return {role: role_resume_version(role, resume_text) for role in roles}
-
