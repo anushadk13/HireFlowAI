@@ -14,11 +14,17 @@ def words(text: str) -> list[str]:
     return re.findall(r"[a-zA-Z][a-zA-Z0-9+#.-]*", text.lower())
 
 
+_ALIAS_PATTERNS: dict[str, list[re.Pattern[str]]] = {
+    skill: [re.compile(rf"\b{re.escape(alias)}\b") for alias in aliases]
+    for skill, aliases in SKILL_ALIASES.items()
+}
+
+
 def detect_skills(text: str) -> list[str]:
     normalized = normalize(text)
     detected: list[str] = []
-    for skill, aliases in SKILL_ALIASES.items():
-        if any(alias in normalized for alias in aliases):
+    for skill, patterns in _ALIAS_PATTERNS.items():
+        if any(pattern.search(normalized) for pattern in patterns):
             detected.append(skill)
     return detected
 

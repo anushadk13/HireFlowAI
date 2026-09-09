@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import math
+import os
 from typing import Any
 
+from backend.services.cover_letter_ai import generate_cover_letter_with_ai
 from backend.services.data import ROLE_PROFILES
+from backend.services.resume_scoring import score_resume_with_ai
 from backend.services.text_utils import (
     count_bullets,
     detect_skills,
@@ -14,7 +17,39 @@ from backend.services.text_utils import (
 )
 
 
-def ats_score(resume_text: str, job_description: str = "") -> dict[str, Any]:
+def _keywords_score(resume_text: str, job_description: str) -> int:
+    if not job_description:
+        return 0
+    resume_kw = {kw.lower() for kw in extract_keywords(resume_text, 20)}
+    jd_kw = {kw.lower() for kw in extract_keywords(job_description, 20)}
+    if not jd_kw:
+        return 0
+    return round(len(resume_kw & jd_kw) / len(jd_kw) * 100)
+
+
+def _formatting_score(resume_text: str) -> int:
+    return max(40, 100 - len(formatting_suggestions(resume_text)) * 20)
+
+
+def _improvement_suggestions(
+    missing_skills: list[str],
+    weak_bullet_points: list[str],
+    format_suggestions: list[str],
+    grammar_issues: list[str],
+) -> list[str]:
+    suggestions: list[str] = []
+    for skill in missing_skills[:2]:
+        suggestions.append(f"Add or highlight experience with {skill} — it's in the job description but not detected in your resume.")
+    if weak_bullet_points:
+        suggestions.append("Rewrite vague bullets (e.g. \"worked on\", \"responsible for\") with specific actions and outcomes.")
+    suggestions.extend(format_suggestions)
+    suggestions.extend(grammar_issues)
+    if not suggestions:
+        suggestions.append("Your resume already covers the detected job requirements well — consider adding metrics to strengthen existing bullets.")
+    return suggestions[:4]
+
+
+def _ats_score_regex(resume_text: str, job_description: str = "") -> dict[str, Any]:
     resume_skills = detect_skills(resume_text)
     job_skills = detect_skills(job_description) if job_description else []
     matched_skills = sorted(set(resume_skills) & set(job_skills))
@@ -26,9 +61,12 @@ def ats_score(resume_text: str, job_description: str = "") -> dict[str, Any]:
         alignment = math.floor((len(matched_skills) / max(1, len(set(job_skills)))) * 45)
     content_bonus = 30 if len(resume_text.split()) > 120 else 18
     score = max(20, min(100, 20 + bullet_bonus + keyword_bonus + alignment + content_bonus))
+    skills_match_score = round((len(matched_skills) / len(job_skills)) * 100) if job_skills else 0
     return {
         "ats_score": score,
         "resume_score": min(100, score + 2),
+        "scoring_method": "regex_fallback",
+        "score_type": "coverage_score",
         "grammar_notes": grammar_notes(resume_text),
         "formatting_suggestions": formatting_suggestions(resume_text),
         "missing_skills": missing_skills,
@@ -37,7 +75,44 @@ def ats_score(resume_text: str, job_description: str = "") -> dict[str, Any]:
         "matched_skills": matched_skills,
         "resume_skills": resume_skills,
         "job_skills": job_skills,
+        "skills_match_score": skills_match_score,
+        "experience_score": min(100, round(bullet_bonus / 10 * 60 + 20)),
+        "gates": [],
+        "flags": {"keyword_stuffing": []},
     }
+
+
+def ats_score(resume_text: str, job_description: str = "", *, use_ai: bool = True) -> dict[str, Any]:
+    result: dict[str, Any] | None = None
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if use_ai and api_key and job_description.strip():
+        result = score_resume_with_ai(resume_text, job_description, api_key)
+
+    if result is None:
+        result = _ats_score_regex(resume_text, job_description)
+
+    result["keywords_score"] = _keywords_score(resume_text, job_description)
+    result["formatting_score"] = _formatting_score(resume_text)
+    result.setdefault("grammar_notes", grammar_notes(resume_text))
+    result.setdefault("formatting_suggestions", formatting_suggestions(resume_text))
+    result.setdefault("weak_bullet_points", detect_weak_bullets(resume_text))
+    result.setdefault("keyword_optimization", result.get("missing_skills", [])[:6] or extract_keywords(job_description, 6))
+    result.setdefault("resume_skills", detect_skills(resume_text))
+    result.setdefault("job_skills", detect_skills(job_description) if job_description else [])
+    suggestions = _improvement_suggestions(
+        result.get("missing_skills", []),
+        result.get("weak_bullet_points", []),
+        result.get("formatting_suggestions", []),
+        result.get("grammar_notes", []),
+    )
+    result["improvement_suggestions"] = suggestions
+    result.setdefault("improvement", {})["improvement_suggestions"] = suggestions
+    result["match_score"] = result["ats_score"]
+    result["skills_match"] = result["matched_skills"]
+    result["recommendation"] = (
+        "Strong match" if result["ats_score"] >= 85 else "Promising" if result["ats_score"] >= 70 else "Needs tailoring"
+    )
+    return result
 
 
 def infer_role(resume_text: str, job_description: str = "", target_role: str = "") -> str:
@@ -77,80 +152,22 @@ def build_improvement_bundle(resume_text: str, job_description: str = "", target
     }
 
 
-COVER_LETTER_PROMPT_TEMPLATE = """You are an expert career coach and copywriter helping me write a highly targeted, natural-sounding cover letter. Do not write a generic letter — follow the process below exactly.
-
-Step 1 — Analyze the job posting
-Read the job description and identify:
-- The 2–3 real priorities/problems this role exists to solve (not just the listed skills)
-- The tone of the company (formal, startup-casual, technical, mission-driven, etc.)
-- Any specific product, initiative, or challenge mentioned that I could reference
-
-Step 2 — Analyze my resume
-Read my resume and identify:
-- The 2–3 achievements most relevant to the priorities from Step 1
-- Concrete metrics or outcomes I can cite as evidence (not vague adjectives)
-- Any potential gap, transition, or mismatch I should address briefly and confidently
-
-Step 3 — Write the cover letter
-Using what you found in Steps 1–2, write a cover letter that:
-1. Opens with a hook — a specific accomplishment, sharp observation about the company, or relevant connection. No "I am writing to apply for..."
-2. Matches my story to their problem — 2–3 achievements mapped directly to the role's real priorities, with concrete evidence, not generic claims
-3. Shows understanding of their context — one paragraph connecting my experience to their specific situation, challenge, or stated values
-4. Closes with confidence — states why I want this role/company plainly, invites next steps, no begging or over-apologizing
-5. Is 250–350 words total
-6. Uses plain, human language — no corporate jargon or clichés ("team player," "go-getter," "synergy," "passionate")
-7. Matches the tone of the job posting (formal vs. casual)
-8. Reads like something I would actually say out loud, not a template with the company name swapped in
-
-Step 4 — Show your work
-Before the final letter, briefly list (2–3 bullets) which priorities you identified in the job posting and which resume achievements you matched to them. This helps me verify it's targeted, not generic.
-
-Output format:
-1. Brief analysis (bullets, from Step 4)
-2. The final cover letter (no headers, ready to copy/paste)
-
-### JOB DESCRIPTION:
-{job_description}
-
-### MY RESUME:
-{resume_text}
-
-### ADDITIONAL CONTEXT (optional):
-{additional_context}
-"""
+class CoverLetterError(Exception):
+    pass
 
 
 def generate_cover_letter(resume_text: str, job_description: str = "", additional_context: str = "") -> str:
-    role = infer_role(resume_text, job_description)
-    detected_skills = detect_skills(resume_text)
-    jd_skills = detect_skills(job_description)
-    matched_skills = [s for s in detected_skills if s.lower() in [j.lower() for j in jd_skills]]
-    top_skills = matched_skills[:4] if matched_skills else detected_skills[:4] or ["Python", "FastAPI", "React", "Cloud Architecture"]
+    if not job_description.strip():
+        raise CoverLetterError("A job description is required to generate a tailored cover letter.")
 
-    primary_skills_str = ", ".join(top_skills)
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise CoverLetterError("Cover letter generation is not configured (missing GEMINI_API_KEY).")
 
-    priority_bullets = [
-        f"Priority Identified: Delivering scalable {role} solutions using {top_skills[0] if top_skills else 'high performance software'} -> Matched Achievement: Developed production-ready features with proven optimization and reliability.",
-        f"Priority Identified: Workflow automation & candidate execution -> Matched Achievement: Applied {top_skills[1] if len(top_skills) > 1 else 'clean architecture'} to reduce manual processing overhead by over 35%.",
-        f"Priority Identified: Technical problem solving and product delivery -> Matched Achievement: Built end-to-end systems utilizing {primary_skills_str}.",
-    ]
-
-    if additional_context and additional_context.strip():
-        priority_bullets.append(f"Additional Context Incorporated: {additional_context.strip()}")
-
-    analysis_section = "Targeted Analysis:\n" + "\n".join(f"• {b}" for b in priority_bullets)
-
-    letter_body = (
-        f"Building reliable, intuitive software that directly addresses core business challenges is what drives my work. "
-        f"Having developed robust applications using {primary_skills_str}, I have consistently focused on turning technical goals into measurable user impact.\n\n"
-        f"In my recent projects, I designed and deployed scalable backend services and responsive frontend interfaces that streamlined data processing, "
-        f"improving workflow efficiency by over 35%. My experience aligns closely with your team's current technical priorities—especially in building clean, maintainable systems that scale seamlessly.\n\n"
-        f"What excites me most about the {role} position is your focus on thoughtful engineering and high-performance delivery. "
-        f"I bring a combination of rapid execution, system design fundamentals, and user-centric problem solving.\n\n"
-        f"I look forward to discussing how my experience with {top_skills[0] if top_skills else 'software engineering'} can support your upcoming goals."
-    )
-
-    return f"{analysis_section}\n\nDear Hiring Manager,\n\n{letter_body}\n\nSincerely,\nCandidate"
+    letter = generate_cover_letter_with_ai(resume_text, job_description, additional_context, api_key)
+    if not letter:
+        raise CoverLetterError("Cover letter generation failed. Please try again.")
+    return letter
 
 
 def interview_questions(resume_text: str, job_description: str = "") -> dict[str, list[str]]:
