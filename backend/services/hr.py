@@ -8,6 +8,84 @@ from backend.services.resume import ats_score
 from backend.services.text_utils import detect_skills, extract_keywords
 
 
+ROLE_SUFFIXES = (
+    r"(?:Engineer|Developer|Designer|Analyst|Scientist|Manager|Specialist|Consultant|"
+    r"Intern|Architect|Administrator|Coordinator|Director|Lead|Officer|Executive)"
+)
+
+RESPONSIBILITY_HEADERS = [
+    r"key responsibilities",
+    r"responsibilities",
+    r"what you.?ll be doing",
+    r"what you.?ll do",
+    r"what you will do",
+    r"what you.?ll work on",
+    r"duties",
+    r"your role",
+    r"the role",
+    r"day.to.day",
+    r"role overview",
+    r"potential roles(?: include)?",
+    r"roles include",
+    r"opportunities include",
+]
+
+OTHER_SECTION_HEADERS = [
+    r"requirements",
+    r"qualifications",
+    r"minimum qualifications",
+    r"preferred qualifications",
+    r"what we.?re looking for",
+    r"who you are",
+    r"about you",
+    r"must.have",
+    r"nice.to.have",
+    r"skills(?: required)?",
+    r"benefits",
+    r"perks",
+    r"what we offer",
+    r"why join us",
+    r"about (?:us|the company|the team)",
+    r"how to apply",
+    r"potential teams(?: you could join)?",
+    r"teams you could join",
+]
+
+RHETORICAL_QUESTION_PATTERN = re.compile(r"\?\s*$")
+
+BOILERPLATE_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in [
+        r"equal opportunity",
+        r"reasonable accommodations?",
+        r"drug.free workplace",
+        r"accessibility is a fundamental",
+        r"committed to inclusion",
+        r"diversity and inclusion",
+    ]
+]
+
+
+def _find_section(text: str, start_headers: list[str], all_headers: list[str]) -> str | None:
+    lines = text.splitlines()
+    start_pattern = re.compile(rf"^\s*[-*•]?\s*(?:{'|'.join(start_headers)})\s*:?\s*$", re.IGNORECASE)
+    any_pattern = re.compile(rf"^\s*[-*•]?\s*(?:{'|'.join(all_headers)})\s*:?\s*$", re.IGNORECASE)
+    start_idx = None
+    for i, line in enumerate(lines):
+        if start_pattern.match(line.strip()):
+            start_idx = i + 1
+            break
+    if start_idx is None:
+        return None
+    end_idx = len(lines)
+    for j in range(start_idx, len(lines)):
+        if any_pattern.match(lines[j].strip()):
+            end_idx = j
+            break
+    section = "\n".join(lines[start_idx:end_idx]).strip()
+    return section or None
+
+
 def parse_jd(job_description: str) -> dict[str, Any]:
     cleaned = re.sub(r"\s+", " ", job_description).strip()
     skills = detect_skills(job_description)
@@ -16,14 +94,14 @@ def parse_jd(job_description: str) -> dict[str, Any]:
     lower = job_description.lower()
     role_title = "Role not specified"
     title_patterns = [
-        r"(?:job\s*title|position|role)\s*[:\-]\s*([^\n.]+)",
-        r"^([A-Z][A-Za-z0-9 /&+-]*(?:Engineer|Developer|Designer|Analyst|Scientist|Manager|Specialist|Consultant|Intern))\b",
-        r"\b(?:hiring|looking for|seeking)\s+(?:an?\s+)?([A-Za-z0-9 /&+-]*(?:Engineer|Developer|Designer|Analyst|Scientist|Manager|Specialist|Consultant|Intern))\b",
+        r"(?:job\s*title|position|role|title)\s*[:\-]\s*([^\n.]+)",
+        rf"^\**\s*([A-Z][A-Za-z0-9 /&+-]*{ROLE_SUFFIXES})\**\s*(?:\n|$|[-@|]|\bat\b)",
+        rf"\b(?:hiring|looking for|seeking)\s+(?:an?\s+)?([A-Za-z0-9 /&+-]*{ROLE_SUFFIXES})\b",
     ]
     for pattern in title_patterns:
         match = re.search(pattern, job_description.strip(), re.IGNORECASE | re.MULTILINE)
         if match:
-            role_title = match.group(1).strip(" -:,.")[:80]
+            role_title = match.group(1).strip(" -:,.*")[:80]
             break
 
     experience_match = re.search(
@@ -39,8 +117,11 @@ def parse_jd(job_description: str) -> dict[str, Any]:
         experience.append("Bachelor's degree or equivalent")
 
     salary = "Not specified"
+    currency = r"(?:\$|£|€|aud|usd|gbp|inr|eur)"
+    amount = r"\d{2,3}(?:,\d{3})?(?:k)?"
     salary_match = re.search(
-        r"(?:\$|aud\s*|usd\s*)\s?\d{2,3}(?:,\d{3})?(?:k)?(?:\s*(?:-|to)\s*(?:\$|aud\s*|usd\s*)?\s?\d{2,3}(?:,\d{3})?(?:k)?)?",
+        rf"{currency}\s?{amount}(?:\s*(?:-|–|to)\s*{currency}?\s?{amount})?"
+        rf"|{amount}(?:\s*(?:-|–|to)\s*{amount})?\s*{currency}\b",
         job_description,
         re.IGNORECASE,
     )
@@ -61,7 +142,11 @@ def parse_jd(job_description: str) -> dict[str, Any]:
             break
 
     location = "Not specified"
-    location_match = re.search(r"(?:location|based in)\s*[:\-]?\s*([A-Za-z ,/-]+)", job_description, re.IGNORECASE)
+    location_match = re.search(
+        r"(?:location|based in|located in|position is located in)\s*[:\-]?\s*([A-Za-z ,/-]+)",
+        job_description,
+        re.IGNORECASE,
+    )
     if location_match:
         location = location_match.group(1).strip(" -:,.")[:80]
     elif "remote" in lower:
@@ -86,25 +171,80 @@ def parse_jd(job_description: str) -> dict[str, Any]:
         "solve",
         "research",
         "prototype",
+        "partner",
+        "support",
+        "coordinate",
+        "analyze",
+        "analyse",
+        "conduct",
+        "ensure",
+        "define",
+        "architect",
+        "optimize",
+        "optimise",
+        "troubleshoot",
+        "mentor",
+        "review",
+        "monitor",
+        "assist",
+        "contribute",
+        "improve",
+        "plan",
+        "execute",
+        "translate",
+        "responsible for",
+        "accountable for",
+        "you will",
+        "you'll",
     ]
 
     def clean_item(item: str) -> str:
         cleaned = re.sub(r"\s+", " ", item or "").strip(" -*•\t\r\n").strip()
         return cleaned
 
+    def dedupe_bullets(chunks: list[str]) -> list[str]:
+        result: list[str] = []
+        seen: set[str] = set()
+        for chunk in chunks:
+            cleaned = clean_item(chunk)
+            if not cleaned or len(cleaned) < 4:
+                continue
+            normalized = re.sub(r"\s+", " ", cleaned).lower()
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            result.append(cleaned)
+        return result
+
+    metadata_label_pattern = re.compile(
+        r"^(?:salary|compensation|location|employment type|job type|experience|education|"
+        r"degree|company|industry|department|team|apply|how to apply|contact|email|phone)\s*[:\-]",
+        re.IGNORECASE,
+    )
+
+    def strip_metadata_lines(items: list[str]) -> list[str]:
+        return [item for item in items if not metadata_label_pattern.match(item)]
+
+    def strip_boilerplate(items: list[str]) -> list[str]:
+        return [
+            item
+            for item in items
+            if not RHETORICAL_QUESTION_PATTERN.search(item)
+            and not any(pattern.search(item) for pattern in BOILERPLATE_PATTERNS)
+        ]
+
     responsibility_candidates: list[str] = []
-    seen_chunks: set[str] = set()
-    for chunk in re.split(r"\n+|(?:^|\n)\s*(?:[-*•]|\d+\.)\s*|(?<=[.!?])\s+", job_description.strip()):
-        cleaned = clean_item(chunk)
-        if not cleaned:
-            continue
-        normalized = re.sub(r"\s+", " ", cleaned).lower()
-        if normalized in seen_chunks:
-            continue
-        seen_chunks.add(normalized)
-        lowered = cleaned.lower()
-        if any(word in lowered for word in action_words):
-            responsibility_candidates.append(cleaned)
+    section_text = _find_section(job_description, RESPONSIBILITY_HEADERS, OTHER_SECTION_HEADERS)
+    if section_text:
+        section_chunks = re.split(r"\n+|(?:^|\n)\s*(?:[-*•]|\d+\.)\s*", section_text)
+        responsibility_candidates = strip_metadata_lines(dedupe_bullets(section_chunks))
+
+    if not responsibility_candidates:
+        candidates = dedupe_bullets(
+            re.split(r"\n+|(?:^|\n)\s*(?:[-*•]|\d+\.)\s*|(?<=[.!?])\s+", job_description.strip())
+        )
+        candidates = strip_boilerplate(strip_metadata_lines(candidates))
+        responsibility_candidates = [item for item in candidates if any(word in item.lower() for word in action_words)]
 
     if not responsibility_candidates:
         responsibility_candidates = [

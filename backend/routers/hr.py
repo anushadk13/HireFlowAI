@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from fastapi import APIRouter
 
 from backend.schemas import AssessmentInput, CandidateBatchInput, ChatInput, JobDescriptionInput, ResumeInput
+from backend.services.ai_extraction import extract_jd_with_ai
 from backend.services.hr import api_analytics, api_dashboard, auto_evaluation, fraud_detection, interview_slots, parse_jd, project_evaluation
 from backend.services.resume import ats_score
 from backend.services.text_utils import detect_skills
@@ -14,6 +16,11 @@ router = APIRouter()
 
 @router.post("/api/hr/parse-jd")
 def api_parse_jd(payload: JobDescriptionInput) -> dict[str, Any]:
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if api_key:
+        ai_result = extract_jd_with_ai(payload.job_description, api_key)
+        if ai_result is not None:
+            return ai_result
     return parse_jd(payload.job_description)
 
 
@@ -40,7 +47,9 @@ def api_rank_candidates(payload: CandidateBatchInput) -> dict[str, Any]:
     for candidate in payload.candidates:
         text = candidate.get("resume_text", "")
         name = candidate.get("name", "Candidate")
-        analysis = ats_score(text, payload.job_description)
+        # use_ai=False: ranking loops over many candidates per request, so this stays on the
+        # fast/free regex scorer rather than issuing one LLM call per candidate synchronously.
+        analysis = ats_score(text, payload.job_description, use_ai=False)
         project = project_evaluation(text)
         total = min(100, round(analysis["ats_score"] * 0.65 + project["score"] * 0.35))
         ranked.append(

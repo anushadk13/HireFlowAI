@@ -5,9 +5,6 @@ export default function StudentSettings({
   onHandleProfilePhotoUpload,
   onRemoveProfilePhoto,
   onOpenProfilePhotoPicker,
-  apiKeyDraft,
-  onApiKeyChange,
-  onSaveApiKey,
   profileInitials,
   profilePhoto,
   profilePhotoInputRef,
@@ -97,27 +94,6 @@ export default function StudentSettings({
             </div>
           </article>
 
-          <article className="student-portal__settings-card">
-            <h2>Manual API key</h2>
-            <p className="student-portal__settings-note">
-              Add a key manually if you want to connect your own provider. It is stored locally in this browser.
-            </p>
-            <form className="student-portal__api-form" onSubmit={onSaveApiKey}>
-              <label className="student-portal__api-field">
-                <span>API key</span>
-                <input
-                  type="password"
-                  value={apiKeyDraft}
-                  onChange={(event) => onApiKeyChange(event.target.value)}
-                  placeholder="Paste your API key"
-                  autoComplete="off"
-                />
-              </label>
-              <button className="student-portal__primary-pill" type="submit">
-                Save key
-              </button>
-            </form>
-          </article>
         </div>
       </div>
     </section>

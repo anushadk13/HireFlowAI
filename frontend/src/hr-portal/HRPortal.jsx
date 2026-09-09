@@ -256,6 +256,26 @@ export default function HRPortal({ onBack }) {
             {parsedRequirements && (
               <div className="hr-portal__section">
                 <div className="hr-portal__row">
+                  <span>Role title</span>
+                  <span className="hr-portal__muted">{parsedRequirements.role_title || "Not specified"}</span>
+                </div>
+                <div className="hr-portal__row">
+                  <span>Location</span>
+                  <span className="hr-portal__muted">{parsedRequirements.location || "Not specified"}</span>
+                </div>
+                <div className="hr-portal__row">
+                  <span>Employment type</span>
+                  <span className="hr-portal__muted">{parsedRequirements.employment_type || "Not specified"}</span>
+                </div>
+                <div className="hr-portal__row">
+                  <span>Salary</span>
+                  <span className="hr-portal__muted">{parsedRequirements.salary || "Not specified"}</span>
+                </div>
+                <div className="hr-portal__row">
+                  <span>Degree</span>
+                  <span className="hr-portal__muted">{parsedRequirements.degree || "Not specified"}</span>
+                </div>
+                <div className="hr-portal__row">
                   <span>Skills</span>
                   <span className="hr-portal__muted">{(parsedRequirements.skills || []).length}</span>
                 </div>
@@ -270,6 +290,11 @@ export default function HRPortal({ onBack }) {
                   <span className="hr-portal__muted">{(parsedRequirements.experience || []).length}</span>
                 </div>
                 {pillList(parsedRequirements.experience)}
+                <div className="hr-portal__row">
+                  <span>Keywords</span>
+                  <span className="hr-portal__muted">{(parsedRequirements.keywords || []).length}</span>
+                </div>
+                {pillList(parsedRequirements.keywords)}
               </div>
             )}
           </div>

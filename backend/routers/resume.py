@@ -5,8 +5,10 @@ from typing import Any
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from backend.schemas import CareerQuestionInput, ResumeInput
+from backend.services.blob_storage import resume_blob_storage
 from backend.services.document_extract import extract_document_text
 from backend.services.resume import (
+    CoverLetterError,
     ats_score,
     build_improvement_bundle,
     career_advice,
@@ -19,7 +21,7 @@ router = APIRouter()
 
 
 @router.post("/api/resume/extract-text")
-async def api_resume_extract_text(file: UploadFile = File(...)) -> dict[str, str]:
+async def api_resume_extract_text(file: UploadFile = File(...)) -> dict[str, Any]:
     content = await file.read()
     try:
         text = extract_document_text(file.filename or "", content, file.content_type or "")
@@ -31,7 +33,12 @@ async def api_resume_extract_text(file: UploadFile = File(...)) -> dict[str, str
     if not text:
         raise HTTPException(status_code=400, detail="No readable text was found in the uploaded resume.")
 
-    return {"text": text}
+    blob = resume_blob_storage.upload_resume(file.filename or "resume", content, file.content_type or "")
+    return {
+        "text": text,
+        "blob_name": blob["blob_name"] if blob else None,
+        "blob_url": blob["url"] if blob else None,
+    }
 
 
 @router.post("/api/resume/analyze")
@@ -43,18 +50,6 @@ def api_resume_analyze(payload: ResumeInput) -> dict[str, Any]:
     return analysis
 
 
-@router.post("/api/resume/match")
-def api_resume_match(payload: ResumeInput) -> dict[str, Any]:
-    analysis = ats_score(payload.resume_text, payload.job_description)
-    match_score = analysis["ats_score"]
-    return {
-        "match_score": f"{match_score}%",
-        "skills_match": analysis["matched_skills"],
-        "missing_skills": analysis["missing_skills"],
-        "recommendation": "Strong match" if match_score >= 85 else "Promising" if match_score >= 70 else "Needs tailoring",
-    }
-
-
 @router.post("/api/resume/improve")
 def api_resume_improve(payload: ResumeInput) -> dict[str, Any]:
     return build_improvement_bundle(payload.resume_text, payload.job_description, payload.target_role)
@@ -62,7 +57,12 @@ def api_resume_improve(payload: ResumeInput) -> dict[str, Any]:
 
 @router.post("/api/resume/cover-letter")
 def api_cover_letter(payload: ResumeInput) -> dict[str, str]:
-    return {"cover_letter": generate_cover_letter(payload.resume_text, payload.job_description, payload.additional_context)}
+    try:
+        letter = generate_cover_letter(payload.resume_text, payload.job_description, payload.additional_context)
+    except CoverLetterError as exc:
+        status_code = 400 if "job description is required" in str(exc) else 503
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    return {"cover_letter": letter}
 
 
 @router.post("/api/resume/interview-prep")

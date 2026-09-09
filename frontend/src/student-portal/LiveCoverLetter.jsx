@@ -28,13 +28,16 @@ export default function LiveCoverLetter({
     const textToDownload = editableText || coverLetter;
     if (!textToDownload) return;
 
+    const roleTitle = parsedJobDetails?.role_title;
+    const documentTitle = roleTitle && roleTitle !== "Role not specified" ? `${roleTitle} Application` : "Application";
+
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Cover Letter</title>
+            <title>${documentTitle.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</title>
             <style>
               body {
                 font-family: Arial, sans-serif;
@@ -44,12 +47,10 @@ export default function LiveCoverLetter({
                 max-width: 800px;
                 margin: 0 auto;
               }
-              h2 { color: #0f172a; margin-bottom: 24px; font-size: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
               p { margin-bottom: 16px; white-space: pre-wrap; font-size: 15px; }
             </style>
           </head>
           <body>
-            <h2>Cover Letter</h2>
             <p>${textToDownload.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
             <script>
               window.onload = function() {
@@ -64,7 +65,7 @@ export default function LiveCoverLetter({
       const element = document.createElement("a");
       const file = new Blob([textToDownload], { type: "text/plain" });
       element.href = URL.createObjectURL(file);
-      element.download = "Cover_Letter.pdf.txt";
+      element.download = `${documentTitle.replace(/\s+/g, "_")}.txt`;
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import LiveCoverLetter from "./LiveCoverLetter.jsx";
-import StudentResumePreview from "./StudentResumePreview.jsx";
 import StudentSettings from "./StudentSettings.jsx";
 import ResumeLibrary from "./ResumeLibrary.jsx";
 import { auth } from "../firebase.js";
@@ -36,8 +35,8 @@ Bachelor's degree or equivalent experience required.`;
 
 const SIDEBAR_ITEMS = [
   { id: "analyzer", label: "RESUME ANALYZER" },
-  { id: "resume", label: "RESUME" },
   { id: "cover-letter", label: "COVER LETTER" },
+  { id: "resume", label: "RESUME" },
 ];
 
 const DEFAULT_SKILLS = ["Python", "FastAPI", "LangChain", "React", "SQL", "Docker", "AWS", "APIs"];
@@ -69,10 +68,6 @@ function getInitialTheme() {
   return THEME_OPTIONS.find((theme) => theme.value === stored) || THEME_OPTIONS[0];
 }
 
-function getStoredApiKey() {
-  return getStoredValue("hireflow-student-api-key", "");
-}
-
 function getStoredProfilePhoto() {
   return getStoredValue("hireflow-student-profile-photo", "");
 }
@@ -84,7 +79,11 @@ async function postJSON(path, body) {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(`Request to ${path} failed with status ${res.status}`);
+    const detail = await res
+      .json()
+      .then((data) => data?.detail)
+      .catch(() => null);
+    throw new Error(detail || `Request to ${path} failed with status ${res.status}`);
   }
   return res.json();
 }
@@ -102,13 +101,6 @@ async function postFormData(path, formData) {
 }
 
 async function extractResumeFileText(file) {
-  const extension = file.name.split(".").pop()?.toLowerCase() || "";
-  const isPlainText = file.type.startsWith("text/") || ["txt", "md", "markdown"].includes(extension);
-
-  if (isPlainText) {
-    return file.text();
-  }
-
   const formData = new FormData();
   formData.append("file", file);
   const result = await postFormData("/api/resume/extract-text", formData);
@@ -182,14 +174,12 @@ export default function StudentPortal({ onSignOut }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState(getInitialTheme);
-  const [apiKeyDraft, setApiKeyDraft] = useState(getStoredApiKey);
   const [profilePhoto, setProfilePhoto] = useState(getStoredProfilePhoto);
   const [resume, setResume] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [resumeMode, setResumeMode] = useState("upload");
   const [activeTemplate, setActiveTemplate] = useState("Professional");
   const [activeSection, setActiveSection] = useState("analyzer");
-  const [previewFromCta, setPreviewFromCta] = useState(false);
   const [skillsDetailsOpen, setSkillsDetailsOpen] = useState(false);
   const [missingSkillsOpen, setMissingSkillsOpen] = useState(false);
   const [resumeFileName, setResumeFileName] = useState("Nina_Carter_Resume.pdf");
@@ -199,7 +189,6 @@ export default function StudentPortal({ onSignOut }) {
   );
 
   const [analysisResult, setAnalysisResult] = useState(null);
-  const [matchResult, setMatchResult] = useState(null);
   const [parsedJobDetails, setParsedJobDetails] = useState(null);
   const [coverLetter, setCoverLetter] = useState("");
   const [uploadedResumes, setUploadedResumes] = useState([]);
@@ -215,15 +204,32 @@ export default function StudentPortal({ onSignOut }) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("") || "U";
-  const hasAnalysis = Boolean(analysisResult || matchResult);
+  const hasAnalysis = Boolean(analysisResult);
   const hasResumeText = Boolean(resume.trim());
-  const score = hasAnalysis
-    ? formatPercent(matchResult?.match_score ?? analysisResult?.resume_score ?? analysisResult?.ats_score ?? 88, 88)
-    : 0;
-  const skillsMatch = hasAnalysis ? formatPercent(matchResult?.skills_match_score ?? analysisResult?.skills_match_score ?? 87, 87) : 0;
-  const experienceMatch = hasAnalysis ? formatPercent(analysisResult?.experience_score ?? 80, 80) : 0;
-  const keywordsMatch = hasAnalysis ? formatPercent(analysisResult?.keywords_score ?? 85, 85) : 0;
-  const formatMatch = hasAnalysis ? formatPercent(analysisResult?.formatting_score ?? 90, 90) : 0;
+  const score = hasAnalysis ? formatPercent(analysisResult?.match_score ?? analysisResult?.ats_score, 88) : 0;
+  const skillsMatch = hasAnalysis ? formatPercent(analysisResult?.skills_match_score, 87) : 0;
+  const experienceMatch = hasAnalysis ? formatPercent(analysisResult?.experience_score, 80) : 0;
+  const keywordsMatch = hasAnalysis ? formatPercent(analysisResult?.keywords_score, 85) : 0;
+  const formatMatch = hasAnalysis ? formatPercent(analysisResult?.formatting_score, 90) : 0;
+  const scoreHeadline = !hasAnalysis
+    ? "No match yet"
+    : score >= 85
+      ? "Great Match! 🎉"
+      : score >= 70
+        ? "Good Match"
+        : score >= 50
+          ? "Needs Tailoring"
+          : "Weak Match";
+  const scoreSubtext = !hasAnalysis
+    ? "Enter job description and upload your resume to see the score."
+    : score >= 85
+      ? "Your resume is well optimized for this job."
+      : score >= 70
+        ? "Your resume aligns well, with a few gaps to close."
+        : score >= 50
+          ? "Your resume needs some adjustments to better match this job."
+          : "Your resume doesn't align well with this job yet.";
+  const scoreHintPill = hasAnalysis ? analysisResult?.recommendation || "-" : "-";
   const portalStyle = {
     "--student-accent": selectedTheme.value,
     "--student-accent-rgb": selectedTheme.rgb,
@@ -278,14 +284,6 @@ export default function StudentPortal({ onSignOut }) {
       return;
     }
 
-    window.localStorage.setItem("hireflow-student-api-key", apiKeyDraft);
-  }, [apiKeyDraft]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
     if (profilePhoto) {
       window.localStorage.setItem("hireflow-student-profile-photo", profilePhoto);
       return;
@@ -330,9 +328,7 @@ export default function StudentPortal({ onSignOut }) {
   const matchedSkills = hasAnalysis
     ? pickArray(analysisResult?.matched_skills).length
       ? analysisResult.matched_skills
-      : pickArray(matchResult?.skills_match).length
-        ? matchResult.skills_match
-        : DEFAULT_SKILLS
+      : DEFAULT_SKILLS
     : [];
 
   const jobSkills = pickArray(parsedJobDetails?.skills);
@@ -353,17 +349,13 @@ export default function StudentPortal({ onSignOut }) {
   const missingSkills = hasAnalysis
     ? pickArray(analysisResult?.missing_skills).length
       ? analysisResult.missing_skills
-      : pickArray(matchResult?.missing_skills).length
-        ? matchResult.missing_skills
-        : DEFAULT_MISSING
+      : DEFAULT_MISSING
     : [];
 
   const improvementTips = hasAnalysis
-    ? pickArray(matchResult?.improvement?.improvement_suggestions).length
-      ? matchResult.improvement.improvement_suggestions
-      : pickArray(matchResult?.improvement?.suggestions).length
-        ? matchResult.improvement.suggestions
-        : DEFAULT_IMPROVEMENTS
+    ? pickArray(analysisResult?.improvement_suggestions).length
+      ? analysisResult.improvement_suggestions
+      : DEFAULT_IMPROVEMENTS
     : [];
 
   async function runAnalysis(resumeText = resume, jobText = jobDescription) {
@@ -377,17 +369,7 @@ export default function StudentPortal({ onSignOut }) {
         resume_text: resumeText,
         job_description: jobText,
       });
-      const match = await postJSON("/api/resume/match", {
-        resume_text: resumeText,
-        job_description: jobText,
-      });
       setAnalysisResult(analysis);
-      setMatchResult({
-        ...analysis,
-        ...match,
-        strengths: pickArray(analysis.matched_skills).length ? analysis.matched_skills : pickArray(match.skills_match),
-        gaps: pickArray(analysis.missing_skills).length ? analysis.missing_skills : pickArray(match.missing_skills),
-      });
       setError("");
     } catch (err) {
       setError(err.message);
@@ -505,11 +487,6 @@ export default function StudentPortal({ onSignOut }) {
     setSelectedTheme(theme);
   }
 
-  function handleSaveApiKey(event) {
-    event.preventDefault();
-    setApiKeyDraft(apiKeyDraft.trim());
-  }
-
   function handleProfilePhotoUpload(event) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -620,40 +597,12 @@ export default function StudentPortal({ onSignOut }) {
             onHandleProfilePhotoUpload={handleProfilePhotoUpload}
             onRemoveProfilePhoto={() => setProfilePhoto("")}
             onOpenProfilePhotoPicker={() => profilePhotoInputRef.current?.click()}
-            apiKeyDraft={apiKeyDraft}
-            onApiKeyChange={setApiKeyDraft}
-            onSaveApiKey={handleSaveApiKey}
             profileInitials={profileInitials}
             profilePhoto={profilePhoto}
             profilePhotoInputRef={profilePhotoInputRef}
             selectedTheme={selectedTheme}
             themeOptions={THEME_OPTIONS}
             onSelectTheme={handleSelectTheme}
-          />
-        ) : activeSection === "preview" ? (
-          <StudentResumePreview
-            fromCta={previewFromCta}
-            resume={resume}
-            resumeFileName={resumeFileName}
-            hasResumeText={hasResumeText}
-            summary={summary}
-            matchedSkills={matchedSkills}
-            score={score}
-            jobDescription={jobDescription}
-            jobExperience={jobExperience}
-            jobSalary={jobSalary}
-            jobType={jobType}
-            jobSkills={jobSkills}
-            hasParsedJobDetails={hasParsedJobDetails}
-            parsedJobDetails={parsedJobDetails}
-            roleSummaryPoints={roleSummaryPoints}
-            resumeMode={resumeMode}
-            setResumeMode={setResumeMode}
-            resumeInputRef={resumeInputRef}
-            handleResumeUpload={handleResumeUpload}
-            handleReuploadResume={handleReuploadResume}
-            handleNewAnalysis={handleNewAnalysis}
-            setResume={setResume}
           />
         ) : activeSection === "resume" ? (
           <ResumeLibrary
@@ -764,121 +713,70 @@ export default function StudentPortal({ onSignOut }) {
                 )}
               </div>
 
-            </article>
-
-            <article className="student-portal__panel student-portal__panel--resume">
-              <div className="student-portal__panel-header student-portal__panel-header--split">
-                <div>
-                  <div className="student-portal__panel-step">
-                    <span>2</span>
-                    <h2>Your Resume</h2>
-                  </div>
-                  <p className="student-portal__panel-subtitle">Upload or paste your resume</p>
-                </div>
-
-      
-              </div>
-
-              <div className="student-portal__upload-tabs" role="tablist" aria-label="Resume source">
-                <button
-                  className={`student-portal__upload-tab${resumeMode === "upload" ? " is-active" : ""}`}
-                  type="button"
-                  onClick={() => setResumeMode("upload")}
+              {/* Select Resume from Library */}
+              <div style={{ marginBottom: "16px" }}>
+                <label
+                  htmlFor="analyzer-resume-select"
+                  style={{
+                    display: "block",
+                    fontWeight: "700",
+                    fontSize: "0.92rem",
+                    color: "#1e293b",
+                    marginBottom: "8px",
+                  }}
                 >
-                  Upload File
-                </button>
-                <button
-                  className={`student-portal__upload-tab${resumeMode === "paste" ? " is-active" : ""}`}
-                  type="button"
-                  onClick={() => setResumeMode("paste")}
+                  Select Resume
+                </label>
+                <select
+                  id="analyzer-resume-select"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleSelectResumeFromLibrary(e.target.value);
+                    }
+                  }}
+                  defaultValue=""
+                  className="student-portal__select"
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(130, 138, 180, 0.25)",
+                    background: "#ffffff",
+                    fontSize: "0.92rem",
+                    color: "#1e293b",
+                    outline: "none",
+                    cursor: "pointer",
+                  }}
                 >
-                  Paste Text
-                </button>
+                  <option value="">Choose a resume...</option>
+                  {uploadedResumes.map((resume) => (
+                    <option key={resume.id} value={resume.id}>
+                      📄 {resume.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-
-              <input
-                ref={resumeInputRef}
-                className="student-portal__hidden-input"
-                type="file"
-                accept=".pdf,.docx,.txt,.md,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={handleResumeUpload}
-              />
-
-              {resumeMode === "upload" && !hasResumeText ? (
-                <div className="student-portal__upload-summary">
-                  <div className="student-portal__dropzone" onClick={() => resumeInputRef.current?.click()} role="button" tabIndex={0}>
-                    <div className="student-portal__dropzone-title">Drag &amp; drop your file here</div>
-                    <div className="student-portal__dropzone-copy">or</div>
-                    <button
-                      className="student-portal__dropzone-button"
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        resumeInputRef.current?.click();
-                      }}
-                    >
-                      Choose File
-                    </button>
-                    <div className="student-portal__dropzone-copy">Supports PDF, DOCX, TXT and Markdown</div>
-                  </div>
-                </div>
-              ) : null}
-
-              {resumeMode === "paste" || hasResumeText ? (
-                <div className={`student-portal__editor-card${resumeMode === "upload" && hasResumeText ? " student-portal__editor-card--expanded" : ""}`}>
-                  <div className="student-portal__editor-toolbar" aria-hidden="true">
-                    <span>↶</span>
-                    <span>↷</span>
-                    <span className="student-portal__toolbar-divider" />
-                    <span>Paragraph</span>
-                    <span className="student-portal__toolbar-divider" />
-                    <span>B</span>
-                    <span>I</span>
-                    <span>U</span>
-                    <span className="student-portal__toolbar-divider" />
-                    <span>≡</span>
-                    <span>☰</span>
-                    <span>🔗</span>
-                    <span>{"{}"}</span>
-                    <span>&lt;/&gt;</span>
-                  </div>
-
-                  <textarea
-                    className="student-portal__textarea student-portal__textarea--resume"
-                    value={resume}
-                    onChange={(e) => setResume(e.target.value)}
-                    aria-label="Resume editor"
-                    placeholder={`Your resume content will appear here...
-You can edit the text if needed.`}
-                  />
-
-                  <div className="student-portal__editor-footer">
-                    <span>{resume.length} / 10000 characters</span>
-                  </div>
-                </div>
-              ) : null}
-
               <div className="student-portal__resume-actions">
-                {resumeMode === "upload" && hasResumeText ? (
-                  <button className="student-portal__ghost-button" type="button" onClick={handleReuploadResume}>
-                    Re-upload
-                  </button>
-                ) : null}
-                <button className="student-portal__text-link student-portal__text-link--center" type="button" onClick={handleNewAnalysis}>
+                <button
+                  className="student-portal__text-link student-portal__text-link--center"
+                  type="button"
+                  onClick={handleNewAnalysis}
+                  disabled={!hasResumeText}
+                >
                   Run analysis <span aria-hidden="true">→</span>
                 </button>
               </div>
-            </article>
 
+            </article>
             <section className="student-portal__stats-grid">
               <article className="student-portal__stat-card">
                 <div className="student-portal__stat-label">ATS SCORE</div>
                 <div className="student-portal__stat-body">
                   <ScoreRing value={score} tone="purple" />
                   <div className="student-portal__stat-copy">
-                    <strong>{hasAnalysis ? "Great Match! 🎉" : "No match yet"}</strong>
-                    <p>{hasAnalysis ? "Your resume is well optimized for this job." : "Enter job description and upload your resume to see the score."}</p>
-                    <span className="student-portal__hint-pill">{hasAnalysis ? "Top 14% of candidates" : "-"}</span>
+                    <strong>{scoreHeadline}</strong>
+                    <p>{scoreSubtext}</p>
+                    <span className="student-portal__hint-pill">{scoreHintPill}</span>
                   </div>
                 </div>
                 <div className="student-portal__stat-metrics">
@@ -940,22 +838,9 @@ You can edit the text if needed.`}
                     <strong>Get AI-powered suggestions to improve your resume for better matches.</strong>
                   </div>
                 )}
-                <button className="student-portal__text-link" type="button">
-                  View Suggestions <span aria-hidden="true">→</span>
-                </button>
+                
               </article>
 
-              <button
-                className="student-portal__ats-cta"
-                type="button"
-                onClick={() => { setPreviewFromCta(true); setActiveSection("preview"); }}
-              >
-                <span className="student-portal__ats-cta-icon" aria-hidden="true">🚀</span>
-                <span>
-                  <strong>Want to get a 95+ ATS score resume?</strong>
-                  <span>Click to view your optimized resume →</span>
-                </span>
-              </button>
             </section>
           </section>
         )}
