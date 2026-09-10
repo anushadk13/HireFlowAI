@@ -122,7 +122,6 @@ class AuthStore:
             self._container = database.create_container_if_not_exists(
                 id=container_name,
                 partition_key=PartitionKey(path=partition_key_path),
-                offer_throughput=400,
             )
             self._mode = "cosmos"
         except Exception:
