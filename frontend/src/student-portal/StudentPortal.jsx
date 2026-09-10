@@ -100,11 +100,62 @@ async function postFormData(path, formData) {
   return res.json();
 }
 
-async function extractResumeFileText(file) {
+async function getJSON(path) {
+  const res = await fetch(`${API_BASE}${path}`);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .then((data) => data?.detail)
+      .catch(() => null);
+    throw new Error(detail || `Request to ${path} failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
+async function deleteRequest(path) {
+  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .then((data) => data?.detail)
+      .catch(() => null);
+    throw new Error(detail || `Request to ${path} failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
+async function uploadResumeFile(file, userId = "") {
   const formData = new FormData();
   formData.append("file", file);
-  const result = await postFormData("/api/resume/extract-text", formData);
+  if (userId) {
+    formData.append("user_id", userId);
+  }
+  return postFormData("/api/resume/extract-text", formData);
+}
+
+async function fetchResumeList(userId) {
+  const result = await getJSON(`/api/resume/list?user_id=${encodeURIComponent(userId)}`);
+  return result.resumes || [];
+}
+
+async function fetchResumeText(resumeId, userId) {
+  const result = await getJSON(`/api/resume/${resumeId}/text?user_id=${encodeURIComponent(userId)}`);
   return result.text || "";
+}
+
+async function deleteResumeRemote(resumeId, userId) {
+  return deleteRequest(`/api/resume/${resumeId}?user_id=${encodeURIComponent(userId)}`);
+}
+
+function mapResumeRecord(record) {
+  return {
+    id: record.id,
+    name: record.filename,
+    size: formatFileSize(record.size),
+    uploadDate: record.uploaded_at,
+    text: null,
+    downloadUrl: record.download_url || null,
+  };
 }
 
 function pickArray(value) {
@@ -242,6 +293,28 @@ export default function StudentPortal({ onSignOut }) {
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    const email = currentUser?.email;
+    if (!email) return;
+
+    let cancelled = false;
+    fetchResumeList(email)
+      .then((records) => {
+        if (!cancelled) {
+          setUploadedResumes(records.map(mapResumeRecord));
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err.message);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.email]);
 
   useEffect(() => {
     const handleClick = (event) => {
@@ -384,7 +457,8 @@ export default function StudentPortal({ onSignOut }) {
     if (!file) return;
 
     try {
-      const text = await extractResumeFileText(file);
+      const result = await uploadResumeFile(file, currentUser?.email || "");
+      const text = result.text || "";
       if (!text.trim()) {
         throw new Error("No readable text was found in the uploaded resume.");
       }
@@ -449,34 +523,56 @@ export default function StudentPortal({ onSignOut }) {
     if (!file) return;
 
     try {
-      const text = await extractResumeFileText(file);
+      const result = await uploadResumeFile(file, currentUser?.email || "");
+      const text = result.text || "";
       if (!text.trim()) {
         throw new Error("No readable text was found in the uploaded resume.");
       }
 
       const newResume = {
-        id: Date.now().toString(),
+        id: result.resume_id || Date.now().toString(),
         name: file.name,
         text: text,
         size: formatFileSize(file.size),
         uploadDate: new Date().toISOString(),
+        downloadUrl: result.download_url || null,
       };
 
-      setUploadedResumes((prev) => [...prev, newResume]);
+      setUploadedResumes((prev) => [newResume, ...prev.filter((r) => r.id !== newResume.id)].slice(0, 5));
       setError("");
     } catch (err) {
       setError(err.message);
     }
   }
 
-  function handleDeleteResume(resumeId) {
+  async function handleDeleteResume(resumeId) {
     setUploadedResumes((prev) => prev.filter((r) => r.id !== resumeId));
+    if (currentUser?.email) {
+      try {
+        await deleteResumeRemote(resumeId, currentUser.email);
+      } catch (err) {
+        setError(err.message);
+      }
+    }
   }
 
-  function handleSelectResumeFromLibrary(resumeId) {
+  async function handleSelectResumeFromLibrary(resumeId) {
     const selectedResume = uploadedResumes.find((r) => r.id === resumeId);
-    if (selectedResume) {
-      setResume(selectedResume.text);
+    if (!selectedResume) return;
+
+    let text = selectedResume.text;
+    if (!text && currentUser?.email) {
+      try {
+        text = await fetchResumeText(resumeId, currentUser.email);
+        setUploadedResumes((prev) => prev.map((r) => (r.id === resumeId ? { ...r, text } : r)));
+      } catch (err) {
+        setError(err.message);
+        return;
+      }
+    }
+
+    if (text) {
+      setResume(text);
       setResumeFileName(selectedResume.name);
       setResumeFileSize(selectedResume.size);
       setResumeMode("upload");
@@ -796,33 +892,9 @@ export default function StudentPortal({ onSignOut }) {
                   <span className="student-portal__missing-count">{missingSkills.length}</span>
                   <p>{hasAnalysis ? "Skills that you might be missing." : "Enter job description to see missing skills"}</p>
                 </div>
-                {missingSkills.length ? (
-                  <ChipList items={missingSkills} tone="amber" />
-                ) : (
-                  <div className="student-portal__empty-inline">Enter job description to see missing skills</div>
-                )}
-                <button
-                  className="student-portal__expand-button"
-                  type="button"
-                  aria-expanded={missingSkillsOpen}
-                  onClick={() => setMissingSkillsOpen((open) => !open)}
-                >
-                  View Suggestions <span className="student-portal__expand-icon" aria-hidden="true">⌄</span>
-                </button>
-                {missingSkillsOpen ? (
-                  <div className="student-portal__expand-panel">
-                    {missingSkills.length ? (
-                      missingSkills.map((skill) => (
-                        <div key={skill}>
-                          <span>{skill}</span>
-                          <strong>Consider adding</strong>
-                        </div>
-                      ))
-                    ) : (
-                      <span>Run an analysis to receive skill suggestions.</span>
-                    )}
-                  </div>
-                ) : null}
+                
+                
+                
               </article>
 
               <article className="student-portal__stat-card">
