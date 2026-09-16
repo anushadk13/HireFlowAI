@@ -94,6 +94,23 @@ class ResumeStore:
         records = self._memory.get(normalized, [])
         return sorted(records, key=lambda r: r.get("uploaded_at", ""), reverse=True)
 
+    def list_all_resumes(self) -> list[dict[str, Any]]:
+        """List resumes across every user, for HR-side bulk analysis."""
+        if self._mode == "cosmos" and self._container is not None:
+            try:
+                items = list(
+                    self._container.query_items(
+                        query="SELECT * FROM c ORDER BY c.uploaded_at DESC",
+                        enable_cross_partition_query=True,
+                    )
+                )
+                return items
+            except Exception:
+                return []
+
+        all_records = [record for records in self._memory.values() for record in records]
+        return sorted(all_records, key=lambda r: r.get("uploaded_at", ""), reverse=True)
+
     def add_resume(
         self,
         user_id: str,
